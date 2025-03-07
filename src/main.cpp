@@ -1,6 +1,10 @@
 #include "device_driver.h"
 #include <stdint.h>
 
+extern volatile int Key_Value;
+extern volatile int Uart1_Rx_In;
+extern volatile int Uart1_Rx_Data;
+
 void delay(uint32_t msec)
 {
     for (uint32_t j = 0; j < 2000UL * msec; j++)
@@ -15,13 +19,29 @@ int main(void)
 
     while (1)
     {
-        // LED Pin -> High
-        LED_All_On();
-        delay(2000);
+        if (Uart1_Rx_In)
+        {
+            Uart_Printf("RX Data=%c\n", Uart1_Rx_Data);
+            Uart1_Rx_In = 0;
+        }
 
-        // LED Pin -> Low
-        LED_All_Off();
-        delay(2000);
+        switch (Key_Value)
+        {
+        case 1:
+            Uart_Printf("KEY=%d\n", Key_Value);
+            Key_Value = 0;
+            LED_All_Off();
+            LED_Display(1);
+            break;
+
+        case 2:
+            Uart_Printf("KEY=%d\n", Key_Value);
+            Key_Value = 0;
+            LED_All_Off();
+            LED_Display(2);
+        default:
+            break;
+        }
     }
 
     return 0;
@@ -74,6 +94,8 @@ void SystemInit()
 
     Uart1_Init(115200);
     LED_Init();
+    Key_ISR_Enable(1);
+    Uart1_RX_Interrupt_Enable(1);
 
     SCB->VTOR = 0x08003000;
     SCB->SHCSR = 7 << 16;

@@ -5,6 +5,8 @@ extern "C"
 {
 #endif /* __cplusplus */
 
+#include "device_driver.h"
+
     void Invalid_ISR(void)
     {
         Uart1_Printf("Invalid_Exception: %d!\n", Macro_Extract_Area(SCB->ICSR, 0x1ff, 0));
@@ -13,11 +15,11 @@ extern "C"
             ;
     }
 
-    static char *const Stack_reg[] = {"R0", "R1", "R2", "R3", "R12", "LR", "RA", "xPSR"};
+    static const char *const Stack_reg[] = {"R0", "R1", "R2", "R3", "R12", "LR", "RA", "xPSR"};
 
     static void Stack_Dump(const char *stack, unsigned int *sp)
     {
-        int i;
+        unsigned int i;
 
         for (i = 0; i < (sizeof(Stack_reg) / sizeof(Stack_reg[0])); i++)
         {
@@ -70,19 +72,6 @@ extern "C"
         Uart1_Printf("MMFAR => %#.8X\n", SCB->MMFAR);
         Uart1_Printf("BFAR => %#.8X\n", SCB->BFAR);
 
-        /* For CPU S/W Reset Test */
-#if 0
-	Uart1_Printf("Processor Reset!\n");
-	SCB->AIRCR = (0x05FA<<16)|(1<<2);
-#endif
-
-        /* For CPU lockup test */
-#if 0
-	Uart1_Printf("Lock In\n");
-	((void (*)(void))0xEFCB4321)();
-	Uart1_Printf("Lock Out\n");
-#endif
-
         for (;;)
             ;
     }
@@ -119,8 +108,8 @@ extern "C"
 
         Fault_Report(msp, lr, psp);
 
-        /* Hard Fault �߻��� ���� �ӽ� �ڵ� */
-        (void)*(volatile int *)0x20005000;
+        for (;;)
+            ;
     }
 
     void SVC_Handler(void)
@@ -136,6 +125,28 @@ extern "C"
     void SysTick_Handler(void)
     {
         Invalid_ISR();
+    }
+
+    /* Interrupt ISR Functions */
+
+    volatile int Key_Value = 0;
+
+    void EXTI9_5_IRQHandler(void)
+    {
+        Key_Value = Macro_Extract_Area(EXTI->PR, 0x3, 6);
+
+        EXTI->PR = 0x3 << 6;
+        NVIC_ClearPendingIRQ((IRQn_Type)23);
+    }
+
+    volatile int Uart1_Rx_In = 0;
+    volatile int Uart1_Rx_Data = 0;
+
+    void USART1_IRQHandler(void)
+    {
+        NVIC_ClearPendingIRQ((IRQn_Type)37);
+        Uart1_Rx_In = 1;
+        Uart1_Rx_Data = Uart1_Get_Pressed();
     }
 
 #ifdef __cplusplus
