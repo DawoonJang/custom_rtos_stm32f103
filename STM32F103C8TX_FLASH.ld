@@ -44,13 +44,22 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
-  FLASH    (rx)    : ORIGIN = 0x8003000,   LENGTH = 52K
+  RAM     (xrw)    : ORIGIN = 0x20000000, LENGTH = 20K
+  FLASH   (rx)     : ORIGIN = 0x08003000, LENGTH = 52K  /* 40KB for program code */
+  BOOTLOADER (rx)  : ORIGIN = 0x08000000, LENGTH = 12K  /* 12KB for bootloader */
 }
 
 /* Sections */
 SECTIONS
 {
+  /* Bootloader section at the beginning of FLASH */
+  .bootloader :
+  {
+    . = ALIGN(4);
+    *(.bootloader)  /* This will link the bootloader binary here */
+    . = ALIGN(4);
+  } >BOOTLOADER
+
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {
@@ -85,14 +94,14 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  .ARM.extab (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .ARM.extab (READONLY) :
   {
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
   } >FLASH
 
-  .ARM (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .ARM (READONLY) :
   {
     . = ALIGN(4);
     __exidx_start = .;
@@ -101,7 +110,7 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  .preinit_array (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .preinit_array (READONLY) :
   {
     . = ALIGN(4);
     PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -110,7 +119,7 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  .init_array (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .init_array (READONLY) :
   {
     . = ALIGN(4);
     PROVIDE_HIDDEN (__init_array_start = .);
@@ -120,7 +129,7 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  .fini_array (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .fini_array (READONLY) :
   {
     . = ALIGN(4);
     PROVIDE_HIDDEN (__fini_array_start = .);
@@ -145,7 +154,6 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-
   } >RAM AT> FLASH
 
   /* Uninitialized data section into "RAM" Ram type memory */

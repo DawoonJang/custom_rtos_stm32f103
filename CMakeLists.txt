@@ -33,7 +33,7 @@ set(LIBRARY_PATHS "-L${LIB_DIR}/lib/thumb/v7-m/nofp -L${GCC_LIB_DIR}/thumb/v7-m/
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CFDEBUG} ${CFCOMMON} ${CFLAGS_EXTRA} -fno-exceptions")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CFDEBUG} ${CFCOMMON} ${CFLAGS_EXTRA}")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${CFCOMMON} -x assembler-with-cpp")
-set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/STM32F103VBHX_FLASH.ld ${LIBRARY_PATHS} ${LDFLAGS_EXTRA}")
+set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/STM32F103C8TX_FLASH.ld ${LIBRARY_PATHS} ${LDFLAGS_EXTRA}")
 
 
 # 소스 파일 찾기
@@ -43,15 +43,20 @@ file(GLOB SOURCE_FILES CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "*.s")
 add_executable(${PROJECT_NAME}.elf ${SOURCE_FILES})
 
 # 추가 빌드 명령어
+# Set the path to the bootloader binary file
+set(BOOTLOADER_PATH "${CMAKE_SOURCE_DIR}/bootloader/M3_mini_IAP_bootloader.bin")
+
+# Add the bootloader section to the ELF file using the linker script
+add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
+    COMMAND ${OBJCOPY} --update-section .bootloader="${BOOTLOADER_PATH}" "${PROJECT_NAME}.elf"
+    COMMENT "Placing bootloader at 0x08000000 in the ELF file"
+)
+
+# Continue the existing custom commands (generating binary, hex, map, etc.)
 add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
     COMMAND ${OBJCOPY} -Obinary "${PROJECT_NAME}.elf" "${PROJECT_NAME}.bin"
     COMMENT "Generating binary file ${PROJECT_NAME}.bin"
 )
-
-# add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
-#     COMMAND ${OBJCOPY} -Oihex "${PROJECT_NAME}.elf" "${PROJECT_NAME}.hex"
-#     COMMENT "Generating hex file ${PROJECT_NAME}.hex"
-# )
 
 add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
     COMMAND ${SIZE} --format=berkeley "${PROJECT_NAME}.elf"
