@@ -47,10 +47,10 @@ add_executable(${PROJECT_NAME}.elf ${SOURCE_FILES})
 set(BOOTLOADER_PATH "${CMAKE_SOURCE_DIR}/bootloader/M3_mini_IAP_bootloader.bin")
 
 # Add the bootloader section to the ELF file using the linker script
-add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
-    COMMAND ${OBJCOPY} --update-section .bootloader="${BOOTLOADER_PATH}" "${PROJECT_NAME}.elf"
-    COMMENT "Placing bootloader at 0x08000000 in the ELF file"
-)
+# add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
+#     COMMAND ${OBJCOPY} --update-section .bootloader="${BOOTLOADER_PATH}" "${PROJECT_NAME}.elf"
+#     COMMENT "Placing bootloader at 0x08000000 in the ELF file"
+# )
 
 # Continue the existing custom commands (generating binary, hex, map, etc.)
 add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD

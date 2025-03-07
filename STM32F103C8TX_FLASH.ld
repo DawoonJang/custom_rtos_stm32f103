@@ -46,19 +46,11 @@ MEMORY
 {
   RAM     (xrw)    : ORIGIN = 0x20000000, LENGTH = 20K
   FLASH   (rx)     : ORIGIN = 0x08003000, LENGTH = 52K  /* 40KB for program code */
-  BOOTLOADER (rx)  : ORIGIN = 0x08000000, LENGTH = 12K  /* 12KB for bootloader */
 }
 
 /* Sections */
 SECTIONS
 {
-  /* Bootloader section at the beginning of FLASH */
-  .bootloader :
-  {
-    . = ALIGN(4);
-    *(.bootloader)  /* This will link the bootloader binary here */
-    . = ALIGN(4);
-  } >BOOTLOADER
 
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :

@@ -1,7 +1,7 @@
-#include "stm32f1xx.h"
+#include "device_driver.h"
 #include <stdint.h>
 
-uint32_t SystemCoreClock = 8000000;
+// uint32_t SystemCoreClock = 8000000;
 
 // delay loop for 8 MHz CPU clock with optimizer enabled
 void delay(uint32_t msec)
@@ -14,22 +14,20 @@ void delay(uint32_t msec)
 
 int main(void)
 {
-    // Enable Port C and alternate functions
-    SET_BIT(RCC->APB2ENR, RCC_APB2ENR_IOPCEN);
-
-    // PC13 = Output for LEDs
-    MODIFY_REG(GPIOC->CRH, GPIO_CRH_CNF13 + GPIO_CRH_MODE13, GPIO_CRH_MODE13_0);
-
     while (1)
     {
+        Uart_Printf("Hello World!\n");
+
         // LED Pin -> High
-        WRITE_REG(GPIOC->BSRR, GPIO_BSRR_BS13);
-        delay(500);
+        LED_All_On();
+        delay(2000);
 
         // LED Pin -> Low
-        WRITE_REG(GPIOC->BSRR, GPIO_BSRR_BR13);
-        delay(500);
+        LED_All_Off();
+        delay(2000);
     }
+
+    return 0;
 }
 
 void SystemInit()
@@ -74,5 +72,13 @@ void SystemInit()
     MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
 
     // Update variable
-    SystemCoreClock = 72000000;
+    // SystemCoreClock = 72000000;
+    Clock_Init();
+
+    Uart1_Init(115200);
+    LED_Init();
+
+    SCB->VTOR = 0x08003000;
+    SCB->SHCSR = 7 << 16;
+    SCB->AIRCR = 0x05FA0000;
 }
