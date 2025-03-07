@@ -11,8 +11,6 @@ void delay(uint32_t msec)
 
 int main(void)
 {
-    delay(1000);
-
     ((void (*)(void))0xE1234567)();
 
     while (1)
