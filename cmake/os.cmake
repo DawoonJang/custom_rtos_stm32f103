@@ -1,0 +1,3 @@
+set(APPLE OFF)
+set(CMAKE_OSX_ARCHITECTURES "")
+
