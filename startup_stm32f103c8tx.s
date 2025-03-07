@@ -127,7 +127,6 @@ Infinite_Loop:
 
 
 g_pfnVectors:
-
   .word _estack
   .word Reset_Handler
   .word NMI_Handler
@@ -205,32 +204,40 @@ g_pfnVectors:
 *
 *******************************************************************************/
 
-  .weak NMI_Handler
-  .thumb_set NMI_Handler,Default_Handler
+    .extern NMI_Handler
+    .weak NMI_Handler
+    .thumb_set NMI_Handler,Default_Handler
 
-  .weak HardFault_Handler
-  .thumb_set HardFault_Handler,Default_Handler
+    .extern HardFault_Handler
+    .weak HardFault_Handler
+    .thumb_set HardFault_Handler,Default_Handler
 
-  .weak MemManage_Handler
-  .thumb_set MemManage_Handler,Default_Handler
+    .extern MemManage_Handler
+    .weak MemManage_Handler
+    .thumb_set MemManage_Handler,Default_Handler
 
-  .weak BusFault_Handler
-  .thumb_set BusFault_Handler,Default_Handler
+    .extern BusFault_Handler
+    .weak BusFault_Handler
+    .thumb_set BusFault_Handler,Default_Handler
 
-  .weak UsageFault_Handler
-  .thumb_set UsageFault_Handler,Default_Handler
+    .extern UsageFault_Handler
+    .weak UsageFault_Handler
+    .thumb_set UsageFault_Handler,Default_Handler
 
-  .weak SVC_Handler
-  .thumb_set SVC_Handler,Default_Handler
+    .extern SVC_Handler
+    .weak SVC_Handler
+    .thumb_set SVC_Handler,Default_Handler
 
   .weak DebugMon_Handler
   .thumb_set DebugMon_Handler,Default_Handler
 
-  .weak PendSV_Handler
-  .thumb_set PendSV_Handler,Default_Handler
+    .extern PendSV_Handler
+    .weak PendSV_Handler
+    .thumb_set PendSV_Handler,Default_Handler
 
-  .weak SysTick_Handler
-  .thumb_set SysTick_Handler,Default_Handler
+    .extern SysTick_Handler
+    .weak SysTick_Handler
+    .thumb_set SysTick_Handler,Default_Handler
 
   .weak WWDG_IRQHandler
   .thumb_set WWDG_IRQHandler,Default_Handler

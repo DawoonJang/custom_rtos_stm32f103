@@ -17,14 +17,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 # 컴파일러 플래그 설정
 set(MCU "cortex-m3")
-set(CFCOMMON "-mcpu=${MCU} -mthumb --specs=nano.specs --specs=nosys.specs --specs=rdimon.specs -Wall -fmessage-length=0 -ffunction-sections -fdata-sections")
+set(CFCOMMON "-mcpu=${MCU} -mthumb -mfloat-abi=soft --specs=nano.specs --specs=nosys.specs --specs=rdimon.specs -Wall -fmessage-length=0 -ffunction-sections -fdata-sections")
 set(CFDEBUG "-O0 -g")
 
 set(LIB_DIR "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi")
 set(GCC_LIB_DIR "/Applications/ArmGNUToolchain/14.2.rel1/lib/gcc/arm-none-eabi/14.2.1")
 
 # EXTRA
-set(CFLAGS_EXTRA "-fno-builtin -funsigned-char -fno-strict-aliasing -fno-common -pipe")
+set(CFLAGS_EXTRA "-fno-builtin -funsigned-char -fno-strict-aliasing -fno-common -pipe -mapcs -mno-thumb-interwork ")
 set(LDFLAGS_EXTRA "-Wl,--gc-sections -Wl,--start-group -lc -lm -lgcc -lstdc++ -lrdimon -Wl,--end-group")
 set(LIBRARY_PATHS "-L${LIB_DIR}/lib/thumb/v7-m/nofp -L${GCC_LIB_DIR}/thumb/v7-m/nofp")
 

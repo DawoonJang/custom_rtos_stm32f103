@@ -9,29 +9,14 @@ void delay(uint32_t msec)
     }
 }
 
-class H
-{
-  public:
-    void Print()
-    {
-        Uart_Printf("Hello CPP World!\n");
-    }
-
-    void Print2()
-    {
-        Uart_Printf("Hello CPP World2!\n");
-    }
-};
-
 int main(void)
 {
-    H h;
+    delay(1000);
+
+    ((void (*)(void))0xE1234567)();
 
     while (1)
     {
-        h.Print();
-        h.Print2();
-
         // LED Pin -> High
         LED_All_On();
         delay(2000);
