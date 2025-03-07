@@ -19,7 +19,7 @@ extern void LED_All_Off(void);
 extern void Uart1_Init(int baud);
 extern void Uart1_Send_Byte(char data);
 extern void Uart1_Send_String(char *pt);
-extern void Uart1_Printf(char *fmt, ...);
+extern void Uart1_Printf(const char *fmt, ...);
 
 // Clock.c
 extern void Clock_Init(void);

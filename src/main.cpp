@@ -1,9 +1,6 @@
 #include "device_driver.h"
 #include <stdint.h>
 
-// uint32_t SystemCoreClock = 8000000;
-
-// delay loop for 8 MHz CPU clock with optimizer enabled
 void delay(uint32_t msec)
 {
     for (uint32_t j = 0; j < 2000UL * msec; j++)
@@ -12,11 +9,28 @@ void delay(uint32_t msec)
     }
 }
 
+class H
+{
+  public:
+    void Print()
+    {
+        Uart_Printf("Hello CPP World!\n");
+    }
+
+    void Print2()
+    {
+        Uart_Printf("Hello CPP World2!\n");
+    }
+};
+
 int main(void)
 {
+    H h;
+
     while (1)
     {
-        Uart_Printf("Hello World!\n");
+        h.Print();
+        h.Print2();
 
         // LED Pin -> High
         LED_All_On();
@@ -72,7 +86,7 @@ void SystemInit()
     MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
 
     // Update variable
-    // SystemCoreClock = 72000000;
+    // SystemCoreClock = SYSCLK;
     Clock_Init();
 
     Uart1_Init(115200);

@@ -50,7 +50,7 @@ void Uart1_Send_String(char *pt)
     }
 }
 
-void Uart1_Printf(char *fmt, ...)
+void Uart1_Printf(const char *fmt, ...)
 {
     va_list ap;
     char string[256];

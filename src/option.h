@@ -1,4 +1,4 @@
-#define SYSCLK 72000000
+#define SYSCLK 72000000 // 72MHz
 #define HCLK SYSCLK
 #define PCLK2 HCLK
 #define PCLK1 (HCLK / 2)
