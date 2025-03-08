@@ -5,8 +5,6 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-#include "device_driver.h"
-
     void Invalid_ISR(void)
     {
         Uart1_Printf("Invalid_Exception: %d!\n", Macro_Extract_Area(SCB->ICSR, 0x1ff, 0));
@@ -40,14 +38,17 @@ extern "C"
             Uart1_Printf("Exception occurs from handler mode\n");
             Stack_Dump("MSP", msp);
             break;
+
         case 0xF0000009:
             Uart1_Printf("Exception occurs from thread mode with MSP\n");
             Stack_Dump("MSP", msp);
             break;
+
         case 0xF000000d:
             Uart1_Printf("Exception occurs from thread mode with PSP\n");
             Stack_Dump("PSP", psp);
             break;
+
         default:
             Uart1_Printf("Invalid exception return value => %#.8X\n", lr & 0xf);
             break;

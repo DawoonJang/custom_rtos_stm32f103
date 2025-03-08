@@ -1,4 +1,5 @@
 #include "device_driver.h"
+#include "os.h"
 #include <stdint.h>
 
 extern volatile int Key_Value;
@@ -13,35 +14,45 @@ void delay(uint32_t msec)
     }
 }
 
+void Task1(void *para)
+{
+    volatile int i;
+
+    for (;;)
+    {
+        // LED_0_Toggle();
+        for (i = 0; i < 0x50000; i++)
+            ;
+    }
+}
+
+void Task2(void *para)
+{
+    volatile int i;
+
+    for (;;)
+    {
+        // LED_1_Toggle();
+        for (i = 0; i < 0x100000; i++)
+            ;
+    }
+}
+
 int main(void)
 {
-    ((void (*)(void))0xE1234567)();
+    LivingRTOS rtos;
+
+    rtos.Init();
+
+    rtos.CreateTask(Task1, nullptr, 1, 32);
+    rtos.CreateTask(Task2, nullptr, 2, 128);
+    rtos.CreateTask(Task2, nullptr, 3, 128);
+
+    rtos.CheckReadyList();
 
     while (1)
     {
-        if (Uart1_Rx_In)
-        {
-            Uart_Printf("RX Data=%c\n", Uart1_Rx_Data);
-            Uart1_Rx_In = 0;
-        }
-
-        switch (Key_Value)
-        {
-        case 1:
-            Uart_Printf("KEY=%d\n", Key_Value);
-            Key_Value = 0;
-            LED_All_Off();
-            LED_Display(1);
-            break;
-
-        case 2:
-            Uart_Printf("KEY=%d\n", Key_Value);
-            Key_Value = 0;
-            LED_All_Off();
-            LED_Display(2);
-        default:
-            break;
-        }
+        ;
     }
 
     return 0;
