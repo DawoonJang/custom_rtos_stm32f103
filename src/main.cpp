@@ -6,6 +6,8 @@ extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
 
+extern LivingRTOS rtos;
+
 void delay(uint32_t msec)
 {
     for (uint32_t j = 0; j < 2000UL * msec; j++)
@@ -16,39 +18,47 @@ void delay(uint32_t msec)
 
 void Task1(void *para)
 {
-    volatile int i;
-
     for (;;)
     {
-        // LED_0_Toggle();
-        for (i = 0; i < 0x50000; i++)
-            ;
+        Uart_Printf("TP1:\n");
+        LED_0_Toggle();
+        // LED_All_On();
+        delay(1000);
     }
 }
 
 void Task2(void *para)
 {
-    volatile int i;
-
     for (;;)
     {
-        // LED_1_Toggle();
+        Uart_Printf("TP2:\n");
+        LED_1_Toggle();
+        // LED_All_Off();
+        delay(500);
+    }
+}
+
+void Task3(void *para)
+{
+    volatile int i;
+    int cnt = 0;
+    for (;;)
+    {
+        Uart_Printf("Task3 : %d\n", cnt++);
         for (i = 0; i < 0x100000; i++)
             ;
     }
 }
 
+// volatile int a = 100;
+
 int main(void)
 {
-    LivingRTOS rtos;
+    rtos.CreateTask(Task1, nullptr, 1, 2048);
+    rtos.CreateTask(Task2, nullptr, 1, 2048);
+    rtos.CreateTask(Task3, nullptr, 1, 2048);
 
-    rtos.Init();
-
-    rtos.CreateTask(Task1, nullptr, 1, 32);
-    rtos.CreateTask(Task2, nullptr, 2, 128);
-    rtos.CreateTask(Task2, nullptr, 3, 128);
-
-    rtos.CheckReadyList();
+    rtos.Scheduling();
 
     while (1)
     {
@@ -101,7 +111,7 @@ void SystemInit()
 
     // Update variable
     // SystemCoreClock = SYSCLK;
-    Clock_Init();
+    ClockInit();
 
     Uart1_Init(115200);
     LED_Init();

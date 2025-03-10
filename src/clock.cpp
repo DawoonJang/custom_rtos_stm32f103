@@ -1,6 +1,6 @@
 #include "device_driver.h"
 
-void Clock_Init(void)
+void ClockInit(void)
 {
     RCC->CR = 0x1;
 

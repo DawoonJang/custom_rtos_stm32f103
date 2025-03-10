@@ -1,4 +1,5 @@
 #include "device_driver.h"
+#include "os.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -113,19 +114,14 @@ extern "C"
             ;
     }
 
-    void SVC_Handler(void)
-    {
-        Invalid_ISR();
-    }
-
-    void PendSV_Handler(void)
-    {
-        Invalid_ISR();
-    }
-
     void SysTick_Handler(void)
     {
-        Invalid_ISR();
+        DISABLE_INTERRUPTS();
+
+        OSIncrementTick();
+        RUN_CONTEXT_SWITCH();
+
+        ENABLE_INTERRUPTS();
     }
 
     /* Interrupt ISR Functions */

@@ -10,6 +10,10 @@
 #define Uart_Send_String Uart1_Send_String
 #define Uart_Printf Uart1_Printf
 
+#define DISABLE_INTERRUPTS() (__set_BASEPRI(0x10))
+#define ENABLE_INTERRUPTS() (__set_BASEPRI(0))
+#define RUN_CONTEXT_SWITCH() (SCB->ICSR = 1 << 28)
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -19,6 +23,8 @@ extern "C"
     extern void LED_Display(unsigned int num);
     extern void LED_All_On(void);
     extern void LED_All_Off(void);
+    extern void LED_0_Toggle(void);
+    extern void LED_1_Toggle(void);
 
     extern void Uart1_Init(int baud);
     extern void Uart1_Send_Byte(char data);
@@ -31,7 +37,7 @@ extern "C"
     extern void Uart1_RX_Interrupt_Enable(int en);
 
     // Clock.c
-    extern void Clock_Init(void);
+    extern void ClockInit(void);
 
     // Key.c
     extern void Key_Poll_Init(void);
@@ -42,6 +48,8 @@ extern "C"
 
     // Asm_Function.s
     extern uint32_t __get_IPSR(void);
+
+    extern void _OS_Start_First_Task(void);
 
 #ifdef __cplusplus
 }
