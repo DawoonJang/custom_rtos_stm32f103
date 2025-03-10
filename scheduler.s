@@ -46,8 +46,3 @@ _SVC_Handler:
 
 	orr		LR, LR, #0xd
 	bx		LR
-
-	.global _OS_Start_First_Task
-	.type 	_OS_Start_First_Task, %function
-_OS_Start_First_Task:
-	svc #0

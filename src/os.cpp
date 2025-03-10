@@ -249,7 +249,7 @@ void LivingRTOS::Scheduling(void)
     Macro_Set_Bit(SysTick->CTRL, 0);
     // SysTick_OS_Tick(TICK_MS);
 
-    _OS_Start_First_Task();
+    __asm__ volatile("svc #0");
 }
 
 void LivingRTOS::InsertTCBToDelayList(Task *ptask)

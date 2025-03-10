@@ -52,8 +52,6 @@ extern "C"
     // Asm_Function.s
     extern uint32_t __get_IPSR(void);
 
-    extern void _OS_Start_First_Task(void);
-
 #ifdef __cplusplus
 }
 #endif
