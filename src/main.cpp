@@ -6,8 +6,6 @@ extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
 
-extern LivingRTOS rtos;
-
 void delay(uint32_t msec)
 {
     for (uint32_t j = 0; j < 2000UL * msec; j++)
@@ -20,9 +18,9 @@ void Task1(void *para)
 {
     for (;;)
     {
-        Uart_Printf("TP1:\n");
+        Uart_Printf("Task1:\n");
         LED_0_Toggle();
-        OSTickDelay(1000);
+        rtos.TickDelay(1000);
     }
 }
 
@@ -30,21 +28,19 @@ void Task2(void *para)
 {
     for (;;)
     {
-        Uart_Printf("TP2:\n");
+        Uart_Printf("Task2:\n");
         LED_1_Toggle();
-        OSTickDelay(500);
+        rtos.TickDelay(500);
     }
 }
 
 void Task3(void *para)
 {
-    volatile int i;
     int cnt = 0;
     for (;;)
     {
         Uart_Printf("Task3 : %d\n", cnt++);
-        for (i = 0; i < 0x100000; i++)
-            ;
+        rtos.TickDelay(2000);
     }
 }
 

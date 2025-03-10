@@ -118,7 +118,7 @@ extern "C"
     {
         DISABLE_INTERRUPTS();
 
-        OSIncrementTick();
+        rtos.IncreaseTick();
         RUN_CONTEXT_SWITCH();
 
         ENABLE_INTERRUPTS();

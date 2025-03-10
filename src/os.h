@@ -21,8 +21,6 @@ extern "C"
 #endif
 
     void SwitchingTask(void);
-    void OSTickDelay(int delay_time);
-    void OSIncrementTick(void);
 
 #ifdef __cplusplus
 }
@@ -83,6 +81,9 @@ class LivingRTOS
 
     void DeleteTCBFromReadyList(Task *task);
     void DeleteTCBFromDelayList(Task *ptask);
+
+    void IncreaseTick(void);
+    void TickDelay(unsigned int delay_time);
 
   private:
     void InsertTCBToFreeList(Task *task);

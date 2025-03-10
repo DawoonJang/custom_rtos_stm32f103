@@ -1,6 +1,7 @@
 #include "macro.h"
 #include "malloc.h"
 #include "option.h"
+#include "os.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx.h"
 
@@ -13,6 +14,8 @@
 #define DISABLE_INTERRUPTS() (__set_BASEPRI(0x10))
 #define ENABLE_INTERRUPTS() (__set_BASEPRI(0))
 #define RUN_CONTEXT_SWITCH() (SCB->ICSR = 1 << 28)
+
+extern LivingRTOS rtos;
 
 #ifdef __cplusplus
 extern "C"

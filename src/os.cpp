@@ -10,31 +10,6 @@ extern "C"
 {
 #endif
 
-    void OSIncrementTick(void)
-    {
-        Task *ptask = rtos.getDelayList();
-
-        rtos.timeTick += TICK_MS;
-        while (ptask)
-        {
-            Task *pnext_task = ptask->next;
-
-            if (ptask->tick_ready <= rtos.timeTick)
-            {
-                ptask->state = STATE_READY;
-
-                rtos.DeleteTCBFromDelayList(ptask);
-                rtos.InsertTCBToReadyList(ptask);
-            }
-            else
-            {
-                ;
-            }
-
-            ptask = pnext_task;
-        }
-    }
-
     void SwitchingTask(void)
     {
         Task **readyList = rtos.getReadyList();
@@ -60,23 +35,6 @@ extern "C"
         SysTick->LOAD = (unsigned int)((HCLK / (8. * 1000.)) * msec + 0.5);
         SysTick->VAL = 0;
         Macro_Set_Bit(SysTick->CTRL, 0);
-    }
-
-    void OSTickDelay(int delay_time)
-    {
-        DISABLE_INTERRUPTS();
-
-        // Task *currentTaskLocal = rtos.getCurrentTask();
-
-        currentTaskGlobal->state = STATE_BLOCKED;
-        currentTaskGlobal->tick_ready = rtos.timeTick + delay_time;
-
-        rtos.DeleteTCBFromReadyList(currentTaskGlobal);
-        rtos.InsertTCBToDelayList(currentTaskGlobal);
-
-        RUN_CONTEXT_SWITCH();
-
-        ENABLE_INTERRUPTS();
     }
 
     static void _IdleTask(void *para)
@@ -284,7 +242,13 @@ void LivingRTOS::Scheduling(void)
         NVIC_SetPriority((IRQn_Type)i, 0xe);
     }
 
-    SysTick_OS_Tick(TICK_MS);
+    // SysTick_OS_Tick(TICK_MS);
+    SysTick->CTRL = (0 << 2) + (1 << 1) + (0 << 0);
+    SysTick->LOAD = (unsigned int)((HCLK / (8. * 1000.)) * TICK_MS + 0.5);
+    SysTick->VAL = 0;
+    Macro_Set_Bit(SysTick->CTRL, 0);
+    // SysTick_OS_Tick(TICK_MS);
+
     _OS_Start_First_Task();
 }
 
@@ -324,6 +288,47 @@ void LivingRTOS::DeleteTCBFromDelayList(Task *ptask)
 Task *LivingRTOS::getCurrentTask(void)
 {
     return currentTask;
+}
+
+void LivingRTOS::IncreaseTick(void)
+{
+    Task *ptask = delayList;
+
+    timeTick += TICK_MS;
+
+    while (ptask)
+    {
+        Task *pnext_task = ptask->next;
+
+        if (ptask->tick_ready <= timeTick)
+        {
+            ptask->state = STATE_READY;
+
+            DeleteTCBFromDelayList(ptask);
+            InsertTCBToReadyList(ptask);
+        }
+        else
+        {
+            ;
+        }
+
+        ptask = pnext_task;
+    }
+}
+
+void LivingRTOS::TickDelay(unsigned int delay_time)
+{
+    DISABLE_INTERRUPTS();
+
+    currentTaskGlobal->state = STATE_BLOCKED;
+    currentTaskGlobal->tick_ready = timeTick + delay_time;
+
+    DeleteTCBFromReadyList(currentTaskGlobal);
+    InsertTCBToDelayList(currentTaskGlobal);
+
+    RUN_CONTEXT_SWITCH();
+
+    ENABLE_INTERRUPTS();
 }
 
 Task *LivingRTOS::getDelayList(void)

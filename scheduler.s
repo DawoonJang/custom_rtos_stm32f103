@@ -30,7 +30,7 @@ _PendSV_Handler:
     ldr     r2, [r3] 
     ldr     r0, [r2]
 
-    ldmia   r0!, {r4-r11}\
+    ldmia   r0!, {r4-r11}
 
     msr     psp, r0
     bx      lr
