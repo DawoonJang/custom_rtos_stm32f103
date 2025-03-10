@@ -1,9 +1,14 @@
+#ifndef __DEVICE_DRIVER_H__
+#define __DEVICE_DRIVER_H__
+
+#include "ar.h"
 #include "macro.h"
 #include "malloc.h"
 #include "option.h"
 #include "os.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx.h"
+#include <queue>
 
 // Uart.c
 #define Uart_Init Uart1_Init
@@ -11,9 +16,20 @@
 #define Uart_Send_String Uart1_Send_String
 #define Uart_Printf Uart1_Printf
 
-#define DISABLE_INTERRUPTS() (__set_BASEPRI(0x10))
-#define ENABLE_INTERRUPTS() (__set_BASEPRI(0))
-#define RUN_CONTEXT_SWITCH() (SCB->ICSR = 1 << 28)
+static inline void disable_interrupts(void)
+{
+    __set_BASEPRI(0x10);
+}
+
+static inline void enable_interrupts(void)
+{
+    __set_BASEPRI(0);
+}
+
+static inline void trigger_context_switch(void)
+{
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+}
 
 extern LivingRTOS rtos;
 
@@ -54,4 +70,6 @@ extern "C"
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

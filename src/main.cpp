@@ -16,41 +16,46 @@ void delay(uint32_t msec)
 
 void Task1(void *para)
 {
+    Task *tcb = rtos.getTCBInfo(0);
+
     for (;;)
     {
         Uart_Printf("Task1:\n");
         LED_0_Toggle();
-        rtos.TickDelay(1000);
+        rtos.delayByTick(1000);
     }
 }
 
 void Task2(void *para)
 {
+    Task *tcb = rtos.getTCBInfo(1);
+
     for (;;)
     {
         Uart_Printf("Task2:\n");
         LED_1_Toggle();
-        rtos.TickDelay(500);
+        rtos.delayByTick(500);
     }
 }
 
 void Task3(void *para)
 {
     int cnt = 0;
+
+    Task *tcb = rtos.getTCBInfo(2);
+
     for (;;)
     {
         Uart_Printf("Task3 : %d\n", cnt++);
-        rtos.TickDelay(2000);
+        rtos.delayByTick(2000);
     }
 }
 
-// volatile int a = 100;
-
 int main(void)
 {
-    rtos.CreateTask(Task1, nullptr, 1, 2048);
-    rtos.CreateTask(Task2, nullptr, 1, 2048);
-    rtos.CreateTask(Task3, nullptr, 1, 2048);
+    rtos.createTask(Task1, nullptr, 1, 2048);
+    rtos.createTask(Task2, nullptr, 1, 2048);
+    rtos.createTask(Task3, nullptr, 1, 2048);
 
     rtos.Scheduling();
 
@@ -108,9 +113,15 @@ void SystemInit()
     ClockInit();
 
     Uart1_Init(115200);
-    LED_Init();
+
     Key_ISR_Enable(1);
     Uart1_RX_Interrupt_Enable(1);
+
+    /* LED INIT */
+    Macro_Set_Bit(RCC->APB2ENR, 3);
+    Macro_Write_Block(GPIOB->CRH, 0xff, 0x66, 0);
+    Macro_Set_Area(GPIOB->ODR, 0x3, 8);
+    /* LED INIT */
 
     SCB->VTOR = 0x08003000;
     SCB->SHCSR = 7 << 16;

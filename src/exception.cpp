@@ -116,15 +116,13 @@ extern "C"
 
     void SysTick_Handler(void)
     {
-        DISABLE_INTERRUPTS();
+        disable_interrupts();
 
-        rtos.IncreaseTick();
-        RUN_CONTEXT_SWITCH();
+        rtos.increaseTick();
+        trigger_context_switch();
 
-        ENABLE_INTERRUPTS();
+        enable_interrupts();
     }
-
-    /* Interrupt ISR Functions */
 
     volatile int Key_Value = 0;
 

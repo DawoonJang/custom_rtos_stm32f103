@@ -1,15 +1,13 @@
 #ifndef __OS_H__
 #define __OS_H__
 
+#include <vector>
+
 #define MAX_TCB (5)
 
 #define PRIO_HIGHEST (0)
 #define PRIO_LOWEST (10)
 #define NUM_PRIO (PRIO_LOWEST - PRIO_HIGHEST + 1)
-
-#define OS_SUCCESS (0)
-#define OS_FAIL_ALLOCATE_TCB (-1)
-#define OS_FAIL_ALLOCATE_STACK (-2)
 
 #define STACK_SIZE (8 * 1024)
 #define INIT_PSR (0x01000000)
@@ -26,11 +24,59 @@ extern "C"
 }
 #endif
 
+typedef enum _fail_value
+{
+    FAIL_STACK_ALLOCATION = -99,
+    FAIL_TCB_ALLOCATION,
+    FAIL_TIME_OUT,
+    FAIL_QUEUE_EMPTY
+
+} E_FAIL_VALUE;
+
 typedef enum _task_state
 {
     STATE_READY = 0,
     STATE_BLOCKED
 } E_TASK_STATE;
+
+typedef enum _task_blocked_state
+{
+    BLOCKED_STATE_NONE = 0,
+    BLOCKED_STATE_WAIT
+
+} E_TASK_BLOCKED_STATE;
+
+struct VectQueue
+{
+    std::vector<int> data;
+
+    void push(const int val)
+    {
+        data.push_back(val);
+    }
+
+    int pop()
+    {
+        if (data.empty())
+        {
+            return FAIL_QUEUE_EMPTY;
+        }
+
+        int val = data.front();
+        data.erase(data.begin());
+        return val;
+    }
+
+    bool empty() const
+    {
+        return data.empty();
+    }
+
+    size_t size() const
+    {
+        return data.size();
+    }
+};
 
 class Task
 {
@@ -42,6 +88,8 @@ class Task
     Task *prev;
     Task *next;
     int tick_ready;
+
+    VectQueue q;
 
     Task() : top_of_stack(nullptr), no_task(-1), prio(0), state(STATE_READY), prev(nullptr), next(nullptr)
     {
@@ -62,34 +110,36 @@ class LivingRTOS
 
   public:
     LivingRTOS();
-    int CreateTask(void (*ptask)(void *), void *para, int prio, int size_stack);
-    void CheckReadyList(void);
-    void DeleteTask(int task_no);
+
+    int createTask(void (*ptask)(void *), void *para, int prio, int size_stack);
+    void checkReadyList(void);
+    void deleteTask(int task_no);
     // void SwitchingTask(void);
     void Scheduling(void);
 
     Task **getReadyList(void);
     Task *getCurrentTask(void);
     Task *getDelayList(void);
+    Task *getTCBInfo(int);
+    Task *getTCBFromFreeList(void);
+
+    void insertTCBToFreeList(Task *task);
 
     Task *currentTask;
 
     int timeTick;
 
-    void InsertTCBToReadyList(Task *task);
-    void InsertTCBToDelayList(Task *ptask);
+    void insertTCBToReadyList(Task *task);
+    void insertTCBToDelayList(Task *ptask);
 
-    void DeleteTCBFromReadyList(Task *task);
-    void DeleteTCBFromDelayList(Task *ptask);
+    void deleteTCBFromReadyList(Task *task);
+    void deleteTCBFromDelayList(Task *ptask);
 
-    void IncreaseTick(void);
-    void TickDelay(unsigned int delay_time);
+    void increaseTick(void);
+    void delayByTick(unsigned int delay_time);
 
   private:
-    void InsertTCBToFreeList(Task *task);
-    Task *GetTCBFromFreeList(void);
-
-    char *GetStack(int size);
+    char *getStack(int size);
 };
 
 #endif /* OS_H */

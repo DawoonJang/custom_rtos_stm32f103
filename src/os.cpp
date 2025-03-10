@@ -28,15 +28,6 @@ extern "C"
             }
         }
     }
-
-    void SysTick_OS_Tick(unsigned int msec)
-    {
-        SysTick->CTRL = (0 << 2) + (1 << 1) + (0 << 0);
-        SysTick->LOAD = (unsigned int)((HCLK / (8. * 1000.)) * msec + 0.5);
-        SysTick->VAL = 0;
-        Macro_Set_Bit(SysTick->CTRL, 0);
-    }
-
     static void _IdleTask(void *para)
     {
         Uart_Printf("IDLE\n");
@@ -63,19 +54,19 @@ LivingRTOS::LivingRTOS()
     for (int i = 0; i < MAX_TCB; i++)
     {
         tcb[i].no_task = i;
-        InsertTCBToFreeList(&tcb[i]);
+        insertTCBToFreeList(&tcb[i]);
     }
 
-    CreateTask(_IdleTask, nullptr, PRIO_LOWEST, 128);
+    createTask(_IdleTask, nullptr, PRIO_LOWEST, 128);
 }
 
-void LivingRTOS::InsertTCBToFreeList(Task *task)
+void LivingRTOS::insertTCBToFreeList(Task *task)
 {
     task->next = free_list;
     free_list = task;
 }
 
-Task *LivingRTOS::GetTCBFromFreeList(void)
+Task *LivingRTOS::getTCBFromFreeList(void)
 {
     if (free_list == nullptr)
         return nullptr;
@@ -86,7 +77,7 @@ Task *LivingRTOS::GetTCBFromFreeList(void)
     return ret;
 }
 
-void LivingRTOS::InsertTCBToReadyList(Task *task)
+void LivingRTOS::insertTCBToReadyList(Task *task)
 {
     int prio = task->prio;
 
@@ -106,7 +97,7 @@ void LivingRTOS::InsertTCBToReadyList(Task *task)
     }
 }
 
-void LivingRTOS::DeleteTCBFromReadyList(Task *task)
+void LivingRTOS::deleteTCBFromReadyList(Task *task)
 {
     int prio = task->prio;
 
@@ -120,7 +111,7 @@ void LivingRTOS::DeleteTCBFromReadyList(Task *task)
     task->prev = task->next = nullptr;
 }
 
-char *LivingRTOS::GetStack(int size)
+char *LivingRTOS::getStack(int size)
 {
     size = (size + 7) & ~0x7; // 8-byte alignment
 
@@ -138,23 +129,27 @@ char *LivingRTOS::GetStack(int size)
     return pstack;
 }
 
-int LivingRTOS::CreateTask(void (*ptask)(void *), void *para, int prio, int size_stack)
+int LivingRTOS::createTask(void (*ptask)(void *), void *para, int prio, int size_stack)
 {
-    Task *task = GetTCBFromFreeList();
+    Task *task = getTCBFromFreeList();
 
-    DISABLE_INTERRUPTS();
+    disable_interrupts();
 
     if (task == nullptr)
     {
-        return OS_FAIL_ALLOCATE_TCB;
+        enable_interrupts();
+
+        return FAIL_TCB_ALLOCATION;
     }
 
-    task->top_of_stack = (unsigned long *)GetStack(size_stack);
+    task->top_of_stack = (unsigned long *)getStack(size_stack);
 
     if (task->top_of_stack == nullptr)
     {
-        InsertTCBToFreeList(task);
-        return OS_FAIL_ALLOCATE_STACK;
+        enable_interrupts();
+
+        insertTCBToFreeList(task);
+        return FAIL_STACK_ALLOCATION;
     }
 
     task->prio = prio;
@@ -165,14 +160,14 @@ int LivingRTOS::CreateTask(void (*ptask)(void *), void *para, int prio, int size
     task->top_of_stack[14] = (unsigned long)ptask;
     task->top_of_stack[15] = INIT_PSR;
 
-    InsertTCBToReadyList(task);
+    insertTCBToReadyList(task);
 
-    ENABLE_INTERRUPTS();
+    enable_interrupts();
 
     return task->no_task;
 }
 
-void LivingRTOS::CheckReadyList(void)
+void LivingRTOS::checkReadyList(void)
 {
     Uart_Printf("HELLO\n");
 
@@ -198,18 +193,18 @@ void LivingRTOS::CheckReadyList(void)
     }
 }
 
-void LivingRTOS::DeleteTask(int task_no)
+void LivingRTOS::deleteTask(int task_no)
 {
     if (task_no >= 0 && task_no < MAX_TCB)
     {
         Task *task = &tcb[task_no];
         if (task->state == STATE_READY)
         {
-            DeleteTCBFromReadyList(task);
+            deleteTCBFromReadyList(task);
         }
 
         task->state = STATE_BLOCKED;
-        InsertTCBToFreeList(task);
+        insertTCBToFreeList(task);
     }
 }
 
@@ -252,7 +247,7 @@ void LivingRTOS::Scheduling(void)
     __asm__ volatile("svc #0");
 }
 
-void LivingRTOS::InsertTCBToDelayList(Task *ptask)
+void LivingRTOS::insertTCBToDelayList(Task *ptask)
 {
     if (delayList == nullptr)
     {
@@ -268,7 +263,7 @@ void LivingRTOS::InsertTCBToDelayList(Task *ptask)
     ptask->next->prev = ptask;
 }
 
-void LivingRTOS::DeleteTCBFromDelayList(Task *ptask)
+void LivingRTOS::deleteTCBFromDelayList(Task *ptask)
 {
     if (ptask->prev != nullptr)
     {
@@ -290,7 +285,7 @@ Task *LivingRTOS::getCurrentTask(void)
     return currentTask;
 }
 
-void LivingRTOS::IncreaseTick(void)
+void LivingRTOS::increaseTick(void)
 {
     Task *ptask = delayList;
 
@@ -304,8 +299,8 @@ void LivingRTOS::IncreaseTick(void)
         {
             ptask->state = STATE_READY;
 
-            DeleteTCBFromDelayList(ptask);
-            InsertTCBToReadyList(ptask);
+            deleteTCBFromDelayList(ptask);
+            insertTCBToReadyList(ptask);
         }
         else
         {
@@ -316,19 +311,24 @@ void LivingRTOS::IncreaseTick(void)
     }
 }
 
-void LivingRTOS::TickDelay(unsigned int delay_time)
+void LivingRTOS::delayByTick(unsigned int delay_time)
 {
-    DISABLE_INTERRUPTS();
+    disable_interrupts();
 
     currentTaskGlobal->state = STATE_BLOCKED;
     currentTaskGlobal->tick_ready = timeTick + delay_time;
 
-    DeleteTCBFromReadyList(currentTaskGlobal);
-    InsertTCBToDelayList(currentTaskGlobal);
+    deleteTCBFromReadyList(currentTaskGlobal);
+    insertTCBToDelayList(currentTaskGlobal);
 
-    RUN_CONTEXT_SWITCH();
+    trigger_context_switch();
 
-    ENABLE_INTERRUPTS();
+    enable_interrupts();
+}
+
+Task *LivingRTOS::getTCBInfo(int taskNum)
+{
+    return &(tcb[taskNum]);
 }
 
 Task *LivingRTOS::getDelayList(void)
