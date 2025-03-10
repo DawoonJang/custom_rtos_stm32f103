@@ -22,8 +22,7 @@ void Task1(void *para)
     {
         Uart_Printf("TP1:\n");
         LED_0_Toggle();
-        // LED_All_On();
-        delay(1000);
+        OSTickDelay(1000);
     }
 }
 
@@ -33,8 +32,7 @@ void Task2(void *para)
     {
         Uart_Printf("TP2:\n");
         LED_1_Toggle();
-        // LED_All_Off();
-        delay(500);
+        OSTickDelay(500);
     }
 }
 

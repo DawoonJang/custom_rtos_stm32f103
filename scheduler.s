@@ -5,7 +5,7 @@
 
 	.align 4
 
-    .extern currentTask
+    .extern currentTaskGlobal
     .extern SwitchingTask
 
 	.global _PendSV_Handler
@@ -15,7 +15,7 @@ _PendSV_Handler:
 
     stmdb   r0!, {r4-r11}
 
-    ldr     r3, =currentTask
+    ldr     r3, =currentTaskGlobal
     ldr     r2, [r3]
     str     r0, [r2]
 
@@ -38,17 +38,16 @@ _PendSV_Handler:
     .global _SVC_Handler
 	.type 	_SVC_Handler, %function
 _SVC_Handler:
-	LDR		R3, =currentTask
-	LDR		R1, [R3]
-	LDR		R0, [R1]
-	LDMIA	R0!, {R4-R11}
-	MSR		PSP, R0
+	ldr		R3, =currentTaskGlobal
+	ldr		R1, [R3]
+	ldr		R0, [R1]
+	ldmia	R0!, {R4-R11}
+	msr		PSP, R0
 
-	ORR		LR, LR, #0xd
-	BX		LR
+	orr		LR, LR, #0xd
+	bx		LR
 
 	.global _OS_Start_First_Task
 	.type 	_OS_Start_First_Task, %function
 _OS_Start_First_Task:
-	SVC #0
-	BX LR
+	svc #0

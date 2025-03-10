@@ -2,7 +2,7 @@
 #include "device_driver.h"
 
 LivingRTOS rtos;
-Task *currentTask = rtos.currentTask;
+Task *currentTaskGlobal = rtos.currentTask;
 // void (LivingRTOS::*SwitchingTask)(void) = &LivingRTOS::SwitchingTask;
 
 #ifdef __cplusplus
@@ -39,13 +39,16 @@ extern "C"
     {
         Task **readyList = rtos.getReadyList();
 
-        readyList[currentTask->prio] = readyList[currentTask->prio]->next;
+        if (currentTaskGlobal->state == STATE_READY)
+        {
+            readyList[currentTaskGlobal->prio] = readyList[currentTaskGlobal->prio]->next;
+        }
 
         for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
         {
             if (readyList[prio])
             {
-                currentTask = readyList[prio];
+                currentTaskGlobal = readyList[prio];
                 break;
             }
         }
@@ -63,13 +66,13 @@ extern "C"
     {
         DISABLE_INTERRUPTS();
 
-        Task *currentTask = rtos.getCurrentTask();
+        // Task *currentTaskLocal = rtos.getCurrentTask();
 
-        currentTask->state = STATE_BLOCKED;
-        currentTask->tick_ready = rtos.timeTick + delay_time;
+        currentTaskGlobal->state = STATE_BLOCKED;
+        currentTaskGlobal->tick_ready = rtos.timeTick + delay_time;
 
-        rtos.DeleteTCBFromReadyList(currentTask);
-        rtos.InsertTCBToDelayList(currentTask);
+        rtos.DeleteTCBFromReadyList(currentTaskGlobal);
+        rtos.InsertTCBToDelayList(currentTaskGlobal);
 
         RUN_CONTEXT_SWITCH();
 
@@ -104,6 +107,8 @@ LivingRTOS::LivingRTOS()
         tcb[i].no_task = i;
         InsertTCBToFreeList(&tcb[i]);
     }
+
+    CreateTask(_IdleTask, nullptr, PRIO_LOWEST, 128);
 }
 
 void LivingRTOS::InsertTCBToFreeList(Task *task)
@@ -179,8 +184,12 @@ int LivingRTOS::CreateTask(void (*ptask)(void *), void *para, int prio, int size
 {
     Task *task = GetTCBFromFreeList();
 
+    DISABLE_INTERRUPTS();
+
     if (task == nullptr)
+    {
         return OS_FAIL_ALLOCATE_TCB;
+    }
 
     task->top_of_stack = (unsigned long *)GetStack(size_stack);
 
@@ -199,6 +208,8 @@ int LivingRTOS::CreateTask(void (*ptask)(void *), void *para, int prio, int size
     task->top_of_stack[15] = INIT_PSR;
 
     InsertTCBToReadyList(task);
+
+    ENABLE_INTERRUPTS();
 
     return task->no_task;
 }
@@ -261,8 +272,6 @@ void LivingRTOS::DeleteTask(int task_no)
 
 void LivingRTOS::Scheduling(void)
 {
-    CreateTask(_IdleTask, nullptr, PRIO_LOWEST, 128);
-
     SwitchingTask();
 
     // Priority
