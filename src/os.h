@@ -56,7 +56,6 @@ class LivingRTOS
 
     std::array<Task *, NUM_PRIO> &getReadyList(void);
 
-    Task *getTCBInfo(int);
     Task *getTCBFromFreeList(void);
 
     void insertTCBToFreeList(Task *const ptask);
@@ -80,7 +79,7 @@ class LivingRTOS
     void enQueue(int, void *);
     bool isQueueEmpty(int);
     bool isQueueFull(int);
-    int createQueue(int length, int elementSize);
+    int createQueue(int, int);
 
     void moveQueuePointer(int, char *&);
     void moveFrontPointerOfQueue(int);
@@ -88,10 +87,10 @@ class LivingRTOS
 
     char *allocateQueueMemory(int size_arr);
 
-    void SendSignal(int taskID, int value);
+    void wakeUpTaskWithSignal(int, int);
 
   private:
-    char *getStack(int size);
+    char *getStack(int);
 };
 
 #endif /* OS_H */

@@ -312,6 +312,11 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
 {
     scopedItrLock lock;
 
+    if (queuePool[queueID].buffer == nullptr)
+    {
+        return;
+    }
+
     if (isQueueFull(queueID))
     {
         return;
@@ -435,6 +440,11 @@ int LivingRTOS::deQueue(int queueID, void *data, int timeout)
 {
     scopedItrLock lock;
 
+    if (queuePool[queueID].buffer == nullptr)
+    {
+        return FAIL;
+    }
+
     if (queuePool[queueID].receiverTaskID != currentTaskGlobal->taskID)
     {
         return FAIL;
@@ -457,10 +467,6 @@ int LivingRTOS::deQueue(int queueID, void *data, int timeout)
 
     trigger_context_switch();
 
-    // enable_interrupts();
-
-    // disable_interrupts();
-
     if (currentTaskGlobal->dataWaitState != DATA_STATE_NONE)
     {
         currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
@@ -470,11 +476,10 @@ int LivingRTOS::deQueue(int queueID, void *data, int timeout)
     memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
 
     moveFrontPointerOfQueue(queueID);
-
     return true;
 }
 
-void LivingRTOS::SendSignal(int taskID, int value)
+void LivingRTOS::wakeUpTaskWithSignal(int taskID, int value)
 {
     scopedItrLock lock;
 
@@ -489,11 +494,6 @@ void LivingRTOS::SendSignal(int taskID, int value)
 
         trigger_context_switch();
     }
-}
-
-Task *LivingRTOS::getTCBInfo(int taskNum)
-{
-    return &(tcbPool[taskNum]);
 }
 
 std::array<Task *, NUM_PRIO> &LivingRTOS::getReadyList(void)

@@ -122,17 +122,17 @@ extern "C"
         trigger_context_switch();
     }
 
-    volatile int Key_Value = 0;
-    volatile int task_key;
+    volatile int keyValue = 0;
+    volatile int keyWaitTaskID;
 
     void EXTI9_5_IRQHandler(void)
     {
-        Key_Value = Macro_Extract_Area(EXTI->PR, 0x3, 6);
+        keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
 
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
 
-        rtos.SendSignal(task_key, Key_Value);
+        rtos.wakeUpTaskWithSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;

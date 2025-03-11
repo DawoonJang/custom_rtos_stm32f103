@@ -33,7 +33,7 @@ extern volatile int Uart1_Rx_Data;
 // }
 
 int queueID;
-extern volatile int task_key;
+extern volatile int keyWaitTaskID;
 
 void Task1(void *para)
 {
@@ -86,7 +86,7 @@ void Task3(void *para)
 
 int main(void)
 {
-    task_key = rtos.createTask(Task1, nullptr, 1, 1024);
+    keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024);
     // rtos.createTask(Task3, nullptr, 3, 1024, 3);
 
