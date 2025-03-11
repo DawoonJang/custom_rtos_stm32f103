@@ -1,18 +1,12 @@
 #include "device_driver.h"
 #include "os.h"
+#include "task.h"
+
 #include <stdint.h>
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
-
-void delay(uint32_t msec)
-{
-    for (uint32_t j = 0; j < 2000UL * msec; j++)
-    {
-        __NOP();
-    }
-}
 
 void Task1(void *para)
 {
@@ -38,11 +32,53 @@ void Task2(void *para)
     }
 }
 
+// void Task1(void *para)
+// {
+//     // Task *tcb_send = rtos.getTCBInfo(0);
+//     Task *tcb_recv = rtos.getTCBInfo(1);
+
+//     int fflag;
+//     int cnt;
+
+//     for (;;)
+//     {
+//         if (rtos.lookAroundForDataTransfer(&fflag, 50000) == true)
+//         {
+//             tcb_recv->enQueue(cnt);
+//             LED_0_Toggle();
+//             cnt++;
+//         }
+//         else
+//         {
+//             Uart1_Printf("T1");
+//         }
+
+//         rtos.delayByTick(500);
+//     }
+// }
+
+// void Task2(void *para)
+// {
+//     int recvData;
+
+//     Task *tcb_recv = rtos.getTCBInfo(1);
+
+//     for (;;)
+//     {
+//         LED_1_Toggle();
+
+//         (tcb_recv->deQueue(&recvData, 1000) == true) ? Uart1_Printf("T2 : %d\n", recvData)
+//                                                      : Uart1_Printf("T2 : NONONO\n");
+
+//         rtos.delayByTick(1000);
+//     }
+// }
+
 void Task3(void *para)
 {
     int cnt = 0;
 
-    Task *tcb = rtos.getTCBInfo(2);
+    // Task *tcb = rtos.getTCBInfo(2);
 
     for (;;)
     {
@@ -53,9 +89,9 @@ void Task3(void *para)
 
 int main(void)
 {
-    rtos.createTask(Task1, nullptr, 1, 2048);
-    rtos.createTask(Task2, nullptr, 1, 2048);
-    rtos.createTask(Task3, nullptr, 1, 2048);
+    rtos.createTask(Task1, nullptr, 1, 1024);
+    rtos.createTask(Task2, nullptr, 1, 1024);
+    rtos.createTask(Task3, nullptr, 1, 1024);
 
     rtos.Scheduling();
 

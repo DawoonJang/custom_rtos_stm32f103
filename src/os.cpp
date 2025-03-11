@@ -28,12 +28,6 @@ extern "C"
             }
         }
     }
-    static void _IdleTask(void *para)
-    {
-        Uart_Printf("IDLE\n");
-        for (;;)
-            ;
-    }
 
 #ifdef __cplusplus
 }
@@ -57,7 +51,13 @@ LivingRTOS::LivingRTOS()
         insertTCBToFreeList(&tcb[i]);
     }
 
-    createTask(_IdleTask, nullptr, PRIO_LOWEST, 128);
+    createTask(
+        [](void *para) {
+            Uart_Printf("IDLE\n");
+            for (;;)
+                ;
+        },
+        nullptr, PRIO_LOWEST, 128);
 }
 
 void LivingRTOS::insertTCBToFreeList(Task *task)
@@ -129,16 +129,13 @@ char *LivingRTOS::getStack(int size)
     return pstack;
 }
 
-int LivingRTOS::createTask(void (*ptask)(void *), void *para, int prio, int size_stack)
+int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack)
 {
     Task *task = getTCBFromFreeList();
-
-    disable_interrupts();
+    scopedItrLock lock;
 
     if (task == nullptr)
     {
-        enable_interrupts();
-
         return FAIL_TCB_ALLOCATION;
     }
 
@@ -146,8 +143,6 @@ int LivingRTOS::createTask(void (*ptask)(void *), void *para, int prio, int size
 
     if (task->top_of_stack == nullptr)
     {
-        enable_interrupts();
-
         insertTCBToFreeList(task);
         return FAIL_STACK_ALLOCATION;
     }
@@ -157,40 +152,12 @@ int LivingRTOS::createTask(void (*ptask)(void *), void *para, int prio, int size
 
     task->top_of_stack -= 16;
     task->top_of_stack[8] = (unsigned long)para;
-    task->top_of_stack[14] = (unsigned long)ptask;
+    task->top_of_stack[14] = (unsigned long)ptaskfunc;
     task->top_of_stack[15] = INIT_PSR;
 
     insertTCBToReadyList(task);
 
-    enable_interrupts();
-
     return task->no_task;
-}
-
-void LivingRTOS::checkReadyList(void)
-{
-    Uart_Printf("HELLO\n");
-
-    for (int prio = PRIO_HIGHEST; prio < NUM_PRIO; prio++) // NUM_PRIO
-    {
-        Task *task = readyList[prio];
-
-        Uart_Printf("%d_READY_TASK: ", prio);
-
-        if (task == nullptr)
-        {
-            Uart_Printf("\n");
-            continue;
-        }
-
-        do
-        {
-            Uart_Printf("%d ", task->no_task);
-            task = task->next;
-        } while (task != readyList[prio]);
-
-        Uart_Printf("\n");
-    }
 }
 
 void LivingRTOS::deleteTask(int task_no)
@@ -295,7 +262,7 @@ void LivingRTOS::increaseTick(void)
     {
         Task *pnext_task = ptask->next;
 
-        if (ptask->tick_ready <= timeTick)
+        if (ptask->currentTick <= timeTick)
         {
             ptask->state = STATE_READY;
 
@@ -313,17 +280,38 @@ void LivingRTOS::increaseTick(void)
 
 void LivingRTOS::delayByTick(unsigned int delay_time)
 {
-    disable_interrupts();
+    scopedItrLock lock;
 
     currentTaskGlobal->state = STATE_BLOCKED;
-    currentTaskGlobal->tick_ready = timeTick + delay_time;
+    currentTaskGlobal->currentTick = timeTick + delay_time;
+
+    deleteTCBFromReadyList(currentTaskGlobal);
+    insertTCBToDelayList(currentTaskGlobal);
+
+    trigger_context_switch();
+}
+
+bool LivingRTOS::lookAroundForDataTransfer(int *pdata, int timeout)
+{
+    int flag;
+
+    scopedItrLock lock;
+
+    currentTaskGlobal->state = STATE_BLOCKED;
+    currentTaskGlobal->currentTick = timeTick + timeout;
+
+    currentTaskGlobal->d_state = DATA_STATE_WAITING;
+    currentTaskGlobal->signalData = 0;
 
     deleteTCBFromReadyList(currentTaskGlobal);
     insertTCBToDelayList(currentTaskGlobal);
 
     trigger_context_switch();
 
-    enable_interrupts();
+    flag = currentTaskGlobal->d_state;
+    currentTaskGlobal->d_state = DATA_STATE_NONE;
+    *pdata = currentTaskGlobal->signalData;
+    return (flag == currentTaskGlobal->d_state) ? true : false;
 }
 
 Task *LivingRTOS::getTCBInfo(int taskNum)

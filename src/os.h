@@ -1,17 +1,8 @@
 #ifndef __OS_H__
 #define __OS_H__
 
-#include <vector>
-
-#define MAX_TCB (5)
-
-#define PRIO_HIGHEST (0)
-#define PRIO_LOWEST (10)
-#define NUM_PRIO (PRIO_LOWEST - PRIO_HIGHEST + 1)
-
-#define STACK_SIZE (8 * 1024)
-#define INIT_PSR (0x01000000)
-#define TICK_MS (1)
+#include "option.h"
+#include "task.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -33,68 +24,12 @@ typedef enum _fail_value
 
 } E_FAIL_VALUE;
 
-typedef enum _task_state
-{
-    STATE_READY = 0,
-    STATE_BLOCKED
-} E_TASK_STATE;
-
 typedef enum _task_blocked_state
 {
     BLOCKED_STATE_NONE = 0,
     BLOCKED_STATE_WAIT
 
 } E_TASK_BLOCKED_STATE;
-
-struct VectQueue
-{
-    std::vector<int> data;
-
-    void push(const int val)
-    {
-        data.push_back(val);
-    }
-
-    int pop()
-    {
-        if (data.empty())
-        {
-            return FAIL_QUEUE_EMPTY;
-        }
-
-        int val = data.front();
-        data.erase(data.begin());
-        return val;
-    }
-
-    bool empty() const
-    {
-        return data.empty();
-    }
-
-    size_t size() const
-    {
-        return data.size();
-    }
-};
-
-class Task
-{
-  public:
-    unsigned long *top_of_stack;
-    int no_task;
-    int prio;
-    E_TASK_STATE state;
-    Task *prev;
-    Task *next;
-    int tick_ready;
-
-    VectQueue q;
-
-    Task() : top_of_stack(nullptr), no_task(-1), prio(0), state(STATE_READY), prev(nullptr), next(nullptr)
-    {
-    }
-};
 
 class LivingRTOS
 {
@@ -128,6 +63,8 @@ class LivingRTOS
     Task *currentTask;
 
     int timeTick;
+
+    bool lookAroundForDataTransfer(int *pdata, int timeout);
 
     void insertTCBToReadyList(Task *task);
     void insertTCBToDelayList(Task *ptask);

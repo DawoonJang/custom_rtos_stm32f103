@@ -72,4 +72,16 @@ extern "C"
 }
 #endif
 
+struct scopedItrLock
+{
+    scopedItrLock()
+    {
+        disable_interrupts();
+    }
+    ~scopedItrLock()
+    {
+        enable_interrupts();
+    }
+};
+
 #endif

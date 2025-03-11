@@ -116,12 +116,10 @@ extern "C"
 
     void SysTick_Handler(void)
     {
-        disable_interrupts();
+        scopedItrLock lock;
 
         rtos.increaseTick();
         trigger_context_switch();
-
-        enable_interrupts();
     }
 
     volatile int Key_Value = 0;
