@@ -3,6 +3,8 @@
 
 #include "option.h"
 #include "task.h"
+#include <array>
+#include <stack>
 
 #ifdef __cplusplus
 extern "C"
@@ -17,7 +19,7 @@ extern "C"
 
 typedef enum _fail_value
 {
-    FAIL_STACK_ALLOCATION = -99,
+    FAIL = -99,
     FAIL_TCB_ALLOCATION,
     FAIL_TIME_OUT,
     FAIL_QUEUE_EMPTY
@@ -34,12 +36,14 @@ typedef enum _task_blocked_state
 class LivingRTOS
 {
   private:
-    Task tcb[MAX_TCB];
-    Task *free_list;
-    Task *readyList[NUM_PRIO];
+    std::array<Task, MAX_TCB> tcbPool{};
+    std::array<Task *, NUM_PRIO> readyTaskPool{};
+    std::stack<Task *> freeTaskPool;
     Task *delayList;
 
     char stack[STACK_SIZE] __attribute__((__aligned__(8))); // Stack aligned to 8 bytes
+    Queue queuePool[MAX_QUEUE];
+    char queue_arr[QUEUE_ARR_SIZE] __attribute__((__aligned__(8)));
     char *stack_limit;
     char *pstack;
 
@@ -47,33 +51,44 @@ class LivingRTOS
     LivingRTOS();
 
     int createTask(void (*ptask)(void *), void *para, int prio, int size_stack);
-    void checkReadyList(void);
     void deleteTask(int task_no);
-    // void SwitchingTask(void);
-    void Scheduling(void);
+    void scheduleTask(void);
 
-    Task **getReadyList(void);
-    Task *getCurrentTask(void);
-    Task *getDelayList(void);
+    std::array<Task *, NUM_PRIO> &getReadyList(void);
+
     Task *getTCBInfo(int);
     Task *getTCBFromFreeList(void);
 
-    void insertTCBToFreeList(Task *task);
+    void insertTCBToFreeList(Task *const ptask);
 
     Task *currentTask;
 
     int timeTick;
 
-    bool lookAroundForDataTransfer(int *pdata, int timeout);
+    bool waitSignalForDataTransfer(int *, int);
 
-    void insertTCBToReadyList(Task *task);
-    void insertTCBToDelayList(Task *ptask);
+    void insertTCBToReadyList(Task *const);
+    void insertTCBToDelayList(Task *const);
 
-    void deleteTCBFromReadyList(Task *task);
-    void deleteTCBFromDelayList(Task *ptask);
+    void deleteTCBFromReadyList(Task *const);
+    void deleteTCBFromDelayList(Task *const);
 
     void increaseTick(void);
     void delayByTick(unsigned int delay_time);
+
+    int deQueue(int, void *, int);
+    void enQueue(int, void *);
+    bool isQueueEmpty(int);
+    bool isQueueFull(int);
+    int createQueue(int length, int elementSize);
+
+    void moveQueuePointer(int, char *&);
+    void moveFrontPointerOfQueue(int);
+    void moveRearPointerOfQueue(int);
+
+    char *allocateQueueMemory(int size_arr);
+
+    void SendSignal(int taskID, int value);
 
   private:
     char *getStack(int size);

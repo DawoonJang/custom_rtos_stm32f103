@@ -24,4 +24,7 @@
 
 #define STACK_SIZE (8 * 1024)
 #define INIT_PSR (0x01000000)
-#define TICK_MS (1)
+#define TICK_MS (5)
+
+#define MAX_QUEUE (5)
+#define QUEUE_ARR_SIZE (1024 * 3)

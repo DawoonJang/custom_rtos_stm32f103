@@ -8,77 +8,74 @@ extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
 
-void Task1(void *para)
-{
-    Task *tcb = rtos.getTCBInfo(0);
-
-    for (;;)
-    {
-        Uart_Printf("Task1:\n");
-        LED_0_Toggle();
-        rtos.delayByTick(1000);
-    }
-}
-
-void Task2(void *para)
-{
-    Task *tcb = rtos.getTCBInfo(1);
-
-    for (;;)
-    {
-        Uart_Printf("Task2:\n");
-        LED_1_Toggle();
-        rtos.delayByTick(500);
-    }
-}
-
 // void Task1(void *para)
 // {
-//     // Task *tcb_send = rtos.getTCBInfo(0);
-//     Task *tcb_recv = rtos.getTCBInfo(1);
-
-//     int fflag;
-//     int cnt;
+//     Task *tcbPool = rtos.getTCBInfo(0);
 
 //     for (;;)
 //     {
-//         if (rtos.lookAroundForDataTransfer(&fflag, 50000) == true)
-//         {
-//             tcb_recv->enQueue(cnt);
-//             LED_0_Toggle();
-//             cnt++;
-//         }
-//         else
-//         {
-//             Uart1_Printf("T1");
-//         }
-
-//         rtos.delayByTick(500);
+//         Uart_Printf("Task1:\n");
+//         LED_0_Toggle();
+//         rtos.delayByTick(1000);
 //     }
 // }
 
 // void Task2(void *para)
 // {
-//     int recvData;
-
-//     Task *tcb_recv = rtos.getTCBInfo(1);
+//     Task *tcbPool = rtos.getTCBInfo(1);
 
 //     for (;;)
 //     {
+//         Uart_Printf("Task2:\n");
 //         LED_1_Toggle();
-
-//         (tcb_recv->deQueue(&recvData, 1000) == true) ? Uart1_Printf("T2 : %d\n", recvData)
-//                                                      : Uart1_Printf("T2 : NONONO\n");
-
-//         rtos.delayByTick(1000);
+//         rtos.delayByTick(500);
 //     }
 // }
+
+int queueID;
+extern volatile int task_key;
+
+void Task1(void *para)
+{
+    int fflag;
+    static int cnt;
+
+    for (;;)
+    {
+        if (rtos.waitSignalForDataTransfer(&fflag, 5000) == true)
+        {
+            rtos.enQueue(queueID, &cnt);
+            LED_1_Toggle();
+            cnt++;
+        }
+        else
+        {
+            ;
+        }
+    }
+}
+
+void Task2(void *para)
+{
+    queueID = rtos.createQueue(1, sizeof(int));
+    int recvData;
+
+    for (;;)
+    {
+        if (rtos.deQueue(queueID, &recvData, 1000) == FAIL)
+        {
+            LED_0_Toggle();
+        }
+        else
+        {
+            Uart_Printf("T2: %d\n", recvData);
+        }
+    }
+}
 
 void Task3(void *para)
 {
     int cnt = 0;
-
-    // Task *tcb = rtos.getTCBInfo(2);
 
     for (;;)
     {
@@ -89,11 +86,11 @@ void Task3(void *para)
 
 int main(void)
 {
-    rtos.createTask(Task1, nullptr, 1, 1024);
-    rtos.createTask(Task2, nullptr, 1, 1024);
-    rtos.createTask(Task3, nullptr, 1, 1024);
+    task_key = rtos.createTask(Task1, nullptr, 1, 1024);
+    rtos.createTask(Task2, nullptr, 2, 1024);
+    // rtos.createTask(Task3, nullptr, 3, 1024, 3);
 
-    rtos.Scheduling();
+    rtos.scheduleTask();
 
     while (1)
     {

@@ -1,5 +1,8 @@
 #include "os.h"
 #include "device_driver.h"
+#include <algorithm>
+
+#include <string.h>
 
 LivingRTOS rtos;
 Task *currentTaskGlobal = rtos.currentTask;
@@ -12,19 +15,19 @@ extern "C"
 
     void SwitchingTask(void)
     {
-        Task **readyList = rtos.getReadyList();
+        auto &readyTaskPool = rtos.getReadyList();
 
         if (currentTaskGlobal->state == STATE_READY)
         {
-            readyList[currentTaskGlobal->prio] = readyList[currentTaskGlobal->prio]->next;
+            readyTaskPool.at(currentTaskGlobal->prio) = readyTaskPool[currentTaskGlobal->prio]->next;
         }
 
         for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
         {
-            if (readyList[prio])
+            if (readyTaskPool[prio] != nullptr)
             {
-                currentTaskGlobal = readyList[prio];
-                break;
+                currentTaskGlobal = readyTaskPool[prio];
+                return;
             }
         }
     }
@@ -33,110 +36,117 @@ extern "C"
 }
 #endif
 
-LivingRTOS::LivingRTOS()
+LivingRTOS::LivingRTOS() : stack_limit(stack), pstack(stack + STACK_SIZE)
 {
-    stack_limit = stack;
-    pstack = stack + STACK_SIZE;
+    readyTaskPool.fill(nullptr);
 
-    // init
-    for (int i = 0; i < NUM_PRIO; i++)
+    for (size_t i = 0; i < MAX_TCB; i++)
     {
-        readyList[i] = nullptr;
-    }
-
-    free_list = nullptr;
-    for (int i = 0; i < MAX_TCB; i++)
-    {
-        tcb[i].no_task = i;
-        insertTCBToFreeList(&tcb[i]);
+        tcbPool[i].taskID = i;
+        insertTCBToFreeList(&tcbPool[i]);
     }
 
     createTask(
         [](void *para) {
-            Uart_Printf("IDLE\n");
-            for (;;)
+            while (1)
+            {
                 ;
+            }
         },
         nullptr, PRIO_LOWEST, 128);
 }
 
-void LivingRTOS::insertTCBToFreeList(Task *task)
+void LivingRTOS::insertTCBToFreeList(Task *const ptask)
 {
-    task->next = free_list;
-    free_list = task;
+    if (ptask != nullptr)
+    {
+        freeTaskPool.push(ptask);
+    }
 }
 
 Task *LivingRTOS::getTCBFromFreeList(void)
 {
-    if (free_list == nullptr)
+    if (freeTaskPool.empty())
+    {
         return nullptr;
+    }
 
-    Task *ret = free_list;
-    free_list = free_list->next;
-
+    Task *ret = freeTaskPool.top();
+    freeTaskPool.pop();
     return ret;
 }
 
-void LivingRTOS::insertTCBToReadyList(Task *task)
+void LivingRTOS::insertTCBToReadyList(Task *const ptask)
 {
-    int prio = task->prio;
+    if (!ptask)
+        return;
 
-    if (readyList[prio] == nullptr)
+    int prio = ptask->prio;
+    Task *&head = readyTaskPool[prio];
+
+    if (!head)
     {
-        readyList[prio] = task;
-        task->next = task;
-        task->prev = task;
+        head = ptask;
     }
     else
     {
-        task->prev = readyList[prio]->prev;
-        task->next = readyList[prio];
+        ptask->prev = head->prev;
+        ptask->next = head;
 
-        task->prev->next = task;
-        task->next->prev = task;
+        head->prev->next = ptask;
+        head->prev = ptask;
     }
+
+    ptask->next = ptask;
+    ptask->prev = ptask;
 }
 
-void LivingRTOS::deleteTCBFromReadyList(Task *task)
+void LivingRTOS::deleteTCBFromReadyList(Task *const ptask)
 {
-    int prio = task->prio;
+    if (!ptask)
+        return;
 
-    task->prev->next = task->next;
-    task->next->prev = task->prev;
+    int prio = ptask->prio;
+    Task *&head = readyTaskPool[prio];
 
-    if (readyList[prio] == task)
+    if (!head)
+        return;
+
+    ptask->prev->next = ptask->next;
+    ptask->next->prev = ptask->prev;
+
+    if (head == ptask)
     {
-        readyList[prio] = (task->next == task) ? nullptr : readyList[prio]->next;
+        head = (ptask->next == ptask) ? nullptr : ptask->next;
     }
-    task->prev = task->next = nullptr;
+
+    ptask->prev = ptask->next = nullptr;
 }
 
 char *LivingRTOS::getStack(int size)
 {
     size = (size + 7) & ~0x7; // 8-byte alignment
 
-    if (pstack - size < stack_limit)
-    {
-        return nullptr;
-    }
-    pstack -= size;
+    char *new_stack = pstack - size;
 
-    if (pstack < stack_limit)
+    if (new_stack < stack_limit)
     {
         return nullptr;
     }
 
+    pstack = new_stack;
     return pstack;
 }
 
 int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack)
 {
-    Task *task = getTCBFromFreeList();
     scopedItrLock lock;
 
-    if (task == nullptr)
+    Task *task = getTCBFromFreeList();
+
+    if (task == nullptr || size_stack < 0 || prio < 0)
     {
-        return FAIL_TCB_ALLOCATION;
+        return FAIL;
     }
 
     task->top_of_stack = (unsigned long *)getStack(size_stack);
@@ -144,7 +154,7 @@ int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int 
     if (task->top_of_stack == nullptr)
     {
         insertTCBToFreeList(task);
-        return FAIL_STACK_ALLOCATION;
+        return FAIL;
     }
 
     task->prio = prio;
@@ -157,64 +167,53 @@ int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int 
 
     insertTCBToReadyList(task);
 
-    return task->no_task;
+    return task->taskID;
 }
 
-void LivingRTOS::deleteTask(int task_no)
+void LivingRTOS::deleteTask(int taskID)
 {
-    if (task_no >= 0 && task_no < MAX_TCB)
-    {
-        Task *task = &tcb[task_no];
-        if (task->state == STATE_READY)
-        {
-            deleteTCBFromReadyList(task);
-        }
+    if (taskID >= MAX_TCB)
+        return;
 
-        task->state = STATE_BLOCKED;
-        insertTCBToFreeList(task);
+    Task &task = tcbPool[taskID];
+
+    if (task.state == STATE_READY)
+    {
+        deleteTCBFromReadyList(&task);
     }
+
+    insertTCBToFreeList(&task);
 }
 
-// void LivingRTOS::SwitchingTask(void)
-// {
-//     readyList[currentTask->prio] = readyList[currentTask->prio]->next;
-
-//     for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
-//     {
-//         if (!readyList[prio])
-//         {
-//             continue;
-//         }
-
-//         currentTask = readyList[prio];
-//     }
-// }
-
-void LivingRTOS::Scheduling(void)
+void LivingRTOS::scheduleTask(void)
 {
     SwitchingTask();
 
-    // Priority
-    SCB->SHP[15 - 4] = 0xf << 4;
-    SCB->SHP[14 - 4] = 0xf << 4;
+    constexpr uint8_t HIGHEST_PRIORITY = 0xF << 4;
+    SCB->SHP[static_cast<uint8_t>(SVCall_IRQn) - 4] = HIGHEST_PRIORITY;
+    SCB->SHP[static_cast<uint8_t>(PendSV_IRQn) - 4] = HIGHEST_PRIORITY;
 
-    // Interrupt Exception Priority
-    for (int i = 0; i <= 42; i++)
+    // Set IRQ priority
+    constexpr int NUM_IRQS = 43; // 0 ~ 42
+    constexpr uint8_t IRQ_PRIORITY = 0xE;
+    for (int i = 0; i < NUM_IRQS; ++i)
     {
-        NVIC_SetPriority((IRQn_Type)i, 0xe);
+        NVIC_SetPriority(static_cast<IRQn_Type>(i), IRQ_PRIORITY);
     }
 
-    // SysTick_OS_Tick(TICK_MS);
-    SysTick->CTRL = (0 << 2) + (1 << 1) + (0 << 0);
-    SysTick->LOAD = (unsigned int)((HCLK / (8. * 1000.)) * TICK_MS + 0.5);
+    // SysTick_OS_Tick;
+    constexpr uint32_t SYSTICK_CTRL_ENABLE = (1 << 1); // Enable SysTick Interrupt
+    SysTick->CTRL = SYSTICK_CTRL_ENABLE;
+    SysTick->LOAD = static_cast<uint32_t>((HCLK / (8.0 * 1000.0)) * TICK_MS + 0.5);
     SysTick->VAL = 0;
-    Macro_Set_Bit(SysTick->CTRL, 0);
-    // SysTick_OS_Tick(TICK_MS);
+    // SysTick_OS_Tick;
+
+    Macro_Set_Bit(SysTick->CTRL, 0); // Enable SysTick Timer
 
     __asm__ volatile("svc #0");
 }
 
-void LivingRTOS::insertTCBToDelayList(Task *ptask)
+void LivingRTOS::insertTCBToDelayList(Task *const ptask)
 {
     if (delayList == nullptr)
     {
@@ -230,7 +229,7 @@ void LivingRTOS::insertTCBToDelayList(Task *ptask)
     ptask->next->prev = ptask;
 }
 
-void LivingRTOS::deleteTCBFromDelayList(Task *ptask)
+void LivingRTOS::deleteTCBFromDelayList(Task *const ptask)
 {
     if (ptask->prev != nullptr)
     {
@@ -245,11 +244,6 @@ void LivingRTOS::deleteTCBFromDelayList(Task *ptask)
     {
         ptask->next->prev = ptask->prev;
     }
-}
-
-Task *LivingRTOS::getCurrentTask(void)
-{
-    return currentTask;
 }
 
 void LivingRTOS::increaseTick(void)
@@ -291,40 +285,218 @@ void LivingRTOS::delayByTick(unsigned int delay_time)
     trigger_context_switch();
 }
 
-bool LivingRTOS::lookAroundForDataTransfer(int *pdata, int timeout)
+bool LivingRTOS::waitSignalForDataTransfer(int *pdata, int timeout)
 {
-    int flag;
-
-    scopedItrLock lock;
+    disable_interrupts();
 
     currentTaskGlobal->state = STATE_BLOCKED;
     currentTaskGlobal->currentTick = timeTick + timeout;
 
-    currentTaskGlobal->d_state = DATA_STATE_WAITING;
+    currentTaskGlobal->dataWaitState = DATA_STATE_WAITING;
     currentTaskGlobal->signalData = 0;
 
     deleteTCBFromReadyList(currentTaskGlobal);
     insertTCBToDelayList(currentTaskGlobal);
 
     trigger_context_switch();
+    enable_interrupts();
 
-    flag = currentTaskGlobal->d_state;
-    currentTaskGlobal->d_state = DATA_STATE_NONE;
+    E_TASK_DATA_STATE initialState = currentTaskGlobal->dataWaitState;
+    currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
     *pdata = currentTaskGlobal->signalData;
-    return (flag == currentTaskGlobal->d_state) ? true : false;
+
+    return (initialState == currentTaskGlobal->dataWaitState);
+}
+
+void LivingRTOS::enQueue(int queueID, void *pdata)
+{
+    scopedItrLock lock;
+
+    if (isQueueFull(queueID))
+    {
+        return;
+    }
+
+    int receiverTaskID = queuePool[queueID].receiverTaskID;
+    Task &receiverTask = tcbPool[receiverTaskID];
+
+    memcpy(queuePool[queueID].rear, pdata, queuePool[queueID].elementSize);
+    moveRearPointerOfQueue(queueID);
+
+    if (receiverTask.dataWaitState == DATA_STATE_WAITING)
+    {
+        receiverTask.state = STATE_READY;
+        receiverTask.dataWaitState = DATA_STATE_NONE;
+
+        deleteTCBFromDelayList(&receiverTask);
+        insertTCBToReadyList(&receiverTask);
+
+        trigger_context_switch();
+    }
+}
+
+bool LivingRTOS::isQueueEmpty(int queueID)
+{
+    if (queueID < 0 || queueID >= MAX_TCB)
+    {
+        return true;
+    }
+
+    return queuePool[queueID].rear == queuePool[queueID].front;
+}
+
+bool LivingRTOS::isQueueFull(int queueID)
+{
+    if (queueID < 0 || queueID >= MAX_TCB)
+    {
+        return false;
+    }
+
+    char *next_rear = queuePool[queueID].rear + queuePool[queueID].elementSize;
+
+    if (next_rear == queuePool[queueID].bufferEnd)
+    {
+        next_rear = queuePool[queueID].buffer;
+    }
+
+    return next_rear == queuePool[queueID].front;
+}
+
+void LivingRTOS::moveQueuePointer(int queueID, char *&pointer)
+{
+    if (queueID < 0 || queueID >= MAX_TCB)
+    {
+        return;
+    }
+
+    pointer += queuePool[queueID].elementSize;
+
+    if (pointer >= queuePool[queueID].bufferEnd)
+    {
+        pointer = queuePool[queueID].buffer;
+    }
+}
+
+void LivingRTOS::moveFrontPointerOfQueue(int queueID)
+{
+    moveQueuePointer(queueID, queuePool[queueID].front);
+}
+
+void LivingRTOS::moveRearPointerOfQueue(int queueID)
+{
+    moveQueuePointer(queueID, queuePool[queueID].rear);
+}
+
+char *LivingRTOS::allocateQueueMemory(int size_arr)
+{
+    static char *queueMemPtr = (char *)queue_arr;
+
+    int size = (size_arr + 7) & ~(0x7);
+
+    if (queueMemPtr + size >= (char *)queue_arr + QUEUE_ARR_SIZE)
+    {
+        return nullptr;
+    }
+
+    char *ret = queueMemPtr;
+    queueMemPtr += size;
+
+    return ret;
+}
+
+int LivingRTOS::createQueue(int capacity, int elementSize)
+{
+    scopedItrLock lock;
+    static int queueIdx;
+
+    if (queueIdx >= MAX_QUEUE || capacity <= 0 || elementSize <= 0)
+    {
+        return FAIL;
+    }
+
+    int qID = queueIdx++;
+
+    queuePool[qID].buffer = allocateQueueMemory((capacity + 1) * elementSize);
+    if (queuePool[qID].buffer == nullptr)
+    {
+        return FAIL;
+    }
+
+    queuePool[qID].elementSize = elementSize;
+    queuePool[qID].capacity = capacity;
+    queuePool[qID].front = queuePool[qID].rear = queuePool[qID].buffer;
+    queuePool[qID].bufferEnd = queuePool[qID].buffer + ((capacity + 1) * elementSize);
+    queuePool[qID].receiverTaskID = currentTaskGlobal->taskID;
+
+    return qID;
+}
+
+int LivingRTOS::deQueue(int queueID, void *data, int timeout)
+{
+    scopedItrLock lock;
+
+    if (queuePool[queueID].receiverTaskID != currentTaskGlobal->taskID)
+    {
+        return FAIL;
+    }
+
+    if (!isQueueEmpty(queueID))
+    {
+        memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
+
+        moveFrontPointerOfQueue(queueID);
+        return true;
+    }
+
+    currentTaskGlobal->state = STATE_BLOCKED;
+    currentTaskGlobal->currentTick = timeTick + timeout;
+    currentTaskGlobal->dataWaitState = DATA_STATE_WAITING;
+
+    deleteTCBFromReadyList(currentTaskGlobal);
+    insertTCBToDelayList(currentTaskGlobal);
+
+    trigger_context_switch();
+
+    // enable_interrupts();
+
+    // disable_interrupts();
+
+    if (currentTaskGlobal->dataWaitState != DATA_STATE_NONE)
+    {
+        currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
+        return FAIL;
+    }
+
+    memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
+
+    moveFrontPointerOfQueue(queueID);
+
+    return true;
+}
+
+void LivingRTOS::SendSignal(int taskID, int value)
+{
+    scopedItrLock lock;
+
+    if (tcbPool[taskID].state == STATE_BLOCKED && tcbPool[taskID].dataWaitState == DATA_STATE_WAITING)
+    {
+        tcbPool[taskID].state = STATE_READY;
+        tcbPool[taskID].dataWaitState = DATA_STATE_NONE;
+        tcbPool[taskID].signalData = value;
+
+        deleteTCBFromDelayList(&tcbPool[taskID]);
+        insertTCBToReadyList(&tcbPool[taskID]);
+
+        trigger_context_switch();
+    }
 }
 
 Task *LivingRTOS::getTCBInfo(int taskNum)
 {
-    return &(tcb[taskNum]);
+    return &(tcbPool[taskNum]);
 }
 
-Task *LivingRTOS::getDelayList(void)
+std::array<Task *, NUM_PRIO> &LivingRTOS::getReadyList(void)
 {
-    return rtos.delayList;
-}
-
-Task **LivingRTOS::getReadyList(void)
-{
-    return rtos.readyList;
+    return readyTaskPool;
 }

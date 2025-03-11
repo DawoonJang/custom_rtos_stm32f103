@@ -123,6 +123,7 @@ extern "C"
     }
 
     volatile int Key_Value = 0;
+    volatile int task_key;
 
     void EXTI9_5_IRQHandler(void)
     {
@@ -130,6 +131,8 @@ extern "C"
 
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
+
+        rtos.SendSignal(task_key, Key_Value);
     }
 
     volatile int Uart1_Rx_In = 0;
@@ -137,9 +140,13 @@ extern "C"
 
     void USART1_IRQHandler(void)
     {
+        char ch = USART1->DR;
+
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
+
+        rtos.enQueue(TASK_2, &ch);
     }
 
 #ifdef __cplusplus

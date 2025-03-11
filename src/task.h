@@ -9,59 +9,57 @@ typedef enum _task_state
     STATE_BLOCKED
 } E_TASK_STATE;
 
+typedef enum _task_num
+{
+    TASK_1 = 1,
+    TASK_2,
+    TASK_3,
+    TASK_4,
+} E_TASK_NUM;
+
 typedef enum _task_data_state
 {
     DATA_STATE_NONE = 0,
     DATA_STATE_WAITING
 } E_TASK_DATA_STATE;
 
-class CustomQ
+struct Queue
 {
-  private:
-    std::vector<int> data;
+    int receiverTaskID;
+    char *front;
+    char *rear;
+    char *buffer;
+    char *bufferEnd;
 
-  public:
-    void push(const int val);
-    int pop(void);
-
-    bool empty(void) const;
-    size_t size(void) const;
+    int elementSize;
+    int capacity;
 };
 
 struct Task
 {
     unsigned long *top_of_stack; // 8: pparam 14: pfunc 15:PSR
-    int no_task;
+    int taskID;
     int prio;
     E_TASK_STATE state;
     Task *prev;
     Task *next;
     int currentTick;
-    E_TASK_DATA_STATE d_state;
+    E_TASK_DATA_STATE dataWaitState;
     int signalData;
 
-    CustomQ q;
-
     Task()
-        : top_of_stack(nullptr), no_task(-1), prio(0), state(STATE_READY), prev(nullptr), next(nullptr), currentTick(0),
-          d_state(DATA_STATE_NONE), signalData(0)
+        : top_of_stack(nullptr), taskID(-1), prio(0), state(STATE_READY), prev(nullptr), next(nullptr), currentTick(0),
+          dataWaitState(DATA_STATE_NONE), signalData(0)
     {
         ;
     }
 
     Task(int id, int priority)
-        : top_of_stack(nullptr), no_task(id), prio(priority), state(STATE_READY), prev(nullptr), next(nullptr),
-          currentTick(0), d_state(DATA_STATE_NONE), signalData(0)
+        : top_of_stack(nullptr), taskID(id), prio(priority), state(STATE_READY), prev(nullptr), next(nullptr),
+          currentTick(0), dataWaitState(DATA_STATE_NONE), signalData(0)
     {
         ;
     }
-
-    bool isQueueEmpty(void) const;
-    bool isQueueFull(void) const;
-
-    bool enQueue(const int val);
-    bool deQueue(int *const val, const int timeout);
-    void waitForReadyState(void);
 
     int getCurrentTick(void);
 };
