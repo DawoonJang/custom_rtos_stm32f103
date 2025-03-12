@@ -5,31 +5,16 @@
 #include <string.h>
 
 LivingRTOS rtos;
-Task *currentTaskGlobal = rtos.currentTask;
-// void (LivingRTOS::*SwitchingTask)(void) = &LivingRTOS::SwitchingTask;
+Task *currentTaskGlobal = nullptr;
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-    void SwitchingTask(void)
+    void switchingTask(void)
     {
-        auto &readyTaskPool = rtos.getReadyList();
-
-        if (currentTaskGlobal->state == STATE_READY)
-        {
-            readyTaskPool.at(currentTaskGlobal->prio) = readyTaskPool[currentTaskGlobal->prio]->next;
-        }
-
-        for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
-        {
-            if (readyTaskPool.at(prio) != nullptr)
-            {
-                currentTaskGlobal = readyTaskPool[prio];
-                return;
-            }
-        }
+        rtos.executeTaskSwitching();
     }
 
 #ifdef __cplusplus
@@ -38,14 +23,6 @@ extern "C"
 
 LivingRTOS::LivingRTOS() : stack_limit(stack), pstack(stack + STACK_SIZE)
 {
-    readyTaskPool.fill(nullptr);
-
-    for (size_t i = 0; i < MAX_TCB; i++)
-    {
-        tcbPool[i].taskID = i;
-        insertTCBToFreeList(&tcbPool[i]);
-    }
-
     createTask(
         [](void *para) {
             while (1)
@@ -54,73 +31,6 @@ LivingRTOS::LivingRTOS() : stack_limit(stack), pstack(stack + STACK_SIZE)
             }
         },
         nullptr, PRIO_LOWEST, 128);
-}
-
-void LivingRTOS::insertTCBToFreeList(Task *const ptask)
-{
-    if (ptask != nullptr)
-    {
-        freeTaskPool.push(ptask);
-    }
-}
-
-Task *LivingRTOS::getTCBFromFreeList(void)
-{
-    if (freeTaskPool.empty())
-    {
-        return nullptr;
-    }
-
-    Task *ret = freeTaskPool.top();
-    freeTaskPool.pop();
-    return ret;
-}
-
-void LivingRTOS::insertTCBToReadyList(Task *const ptask)
-{
-    if (!ptask)
-        return;
-
-    int prio = ptask->prio;
-    Task *&head = readyTaskPool[prio];
-
-    if (!head)
-    {
-        head = ptask;
-    }
-    else
-    {
-        ptask->prev = head->prev;
-        ptask->next = head;
-
-        head->prev->next = ptask;
-        head->prev = ptask;
-    }
-
-    ptask->next = ptask;
-    ptask->prev = ptask;
-}
-
-void LivingRTOS::deleteTCBFromReadyList(Task *const ptask)
-{
-    if (!ptask)
-        return;
-
-    int prio = ptask->prio;
-    Task *&head = readyTaskPool[prio];
-
-    if (!head)
-        return;
-
-    ptask->prev->next = ptask->next;
-    ptask->next->prev = ptask->prev;
-
-    if (head == ptask)
-    {
-        head = (ptask->next == ptask) ? nullptr : ptask->next;
-    }
-
-    ptask->prev = ptask->next = nullptr;
 }
 
 char *LivingRTOS::getStack(int size)
@@ -142,52 +52,42 @@ int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int 
 {
     scopedItrLock lock;
 
-    Task *task = getTCBFromFreeList();
+    Task *ptask = sche.getTCBFromFreeList();
 
-    if (task == nullptr || size_stack < 0 || prio < 0)
+    if (ptask == nullptr || size_stack < 0 || prio < 0)
     {
         return FAIL;
     }
 
-    task->top_of_stack = (unsigned long *)getStack(size_stack);
+    ptask->top_of_stack = (unsigned long *)getStack(size_stack);
 
-    if (task->top_of_stack == nullptr)
+    if (ptask->top_of_stack == nullptr)
     {
-        insertTCBToFreeList(task);
+        sche.insertTCBToFreeList(ptask->taskID);
         return FAIL;
     }
 
-    task->prio = prio;
-    task->state = STATE_READY;
+    ptask->prio = ptask->originPrio = prio;
+    ptask->state = TaskState::Ready;
 
-    task->top_of_stack -= 16;
-    task->top_of_stack[8] = (unsigned long)para;
-    task->top_of_stack[14] = (unsigned long)ptaskfunc;
-    task->top_of_stack[15] = INIT_PSR;
+    ptask->top_of_stack -= 16;
+    ptask->top_of_stack[8] = (unsigned long)para;
+    ptask->top_of_stack[14] = (unsigned long)ptaskfunc;
+    ptask->top_of_stack[15] = INIT_PSR;
 
-    insertTCBToReadyList(task);
+    sche.insertTCBToReadyList(ptask->taskID);
 
-    return task->taskID;
+    return ptask->taskID;
 }
 
 void LivingRTOS::deleteTask(int taskID)
 {
-    if (taskID >= MAX_TCB)
-        return;
-
-    Task &task = tcbPool[taskID];
-
-    if (task.state == STATE_READY)
-    {
-        deleteTCBFromReadyList(&task);
-    }
-
-    insertTCBToFreeList(&task);
+    sche.deleteTask(taskID);
 }
 
 void LivingRTOS::scheduleTask(void)
 {
-    SwitchingTask();
+    executeTaskSwitching();
 
     constexpr uint8_t HIGHEST_PRIORITY = 0xF << 4;
     SCB->SHP[static_cast<uint8_t>(SVCall_IRQn) - 4] = HIGHEST_PRIORITY;
@@ -213,98 +113,36 @@ void LivingRTOS::scheduleTask(void)
     __asm__ volatile("svc #0");
 }
 
-void LivingRTOS::insertTCBToDelayList(Task *const ptask)
-{
-    if (delayList == nullptr)
-    {
-        delayList = ptask;
-        ptask->prev = ptask->next = nullptr;
-        return;
-    }
-
-    ptask->prev = nullptr;
-    ptask->next = delayList;
-
-    delayList = ptask;
-    ptask->next->prev = ptask;
-}
-
-void LivingRTOS::deleteTCBFromDelayList(Task *const ptask)
-{
-    if (ptask->prev != nullptr)
-    {
-        ptask->prev->next = ptask->next;
-    }
-    else
-    {
-        delayList = ptask->next;
-    }
-
-    if (ptask->next != nullptr)
-    {
-        ptask->next->prev = ptask->prev;
-    }
-}
-
 void LivingRTOS::increaseTick(void)
 {
-    Task *ptask = delayList;
-
-    timeTick += TICK_MS;
-
-    while (ptask)
-    {
-        Task *pnext_task = ptask->next;
-
-        if (ptask->currentTick <= timeTick)
-        {
-            ptask->state = STATE_READY;
-
-            deleteTCBFromDelayList(ptask);
-            insertTCBToReadyList(ptask);
-        }
-        else
-        {
-            ;
-        }
-
-        ptask = pnext_task;
-    }
+    sche.increaseTick();
 }
 
 void LivingRTOS::delayByTick(unsigned int delay_time)
 {
-    scopedItrLock lock;
-
-    currentTaskGlobal->state = STATE_BLOCKED;
-    currentTaskGlobal->currentTick = timeTick + delay_time;
-
-    deleteTCBFromReadyList(currentTaskGlobal);
-    insertTCBToDelayList(currentTaskGlobal);
-
-    trigger_context_switch();
+    sche.delayByTick(delay_time);
 }
 
 bool LivingRTOS::waitSignalForDataTransfer(int *pdata, int timeout)
 {
     scopedItrLock lock;
 
-    currentTaskGlobal->state = STATE_BLOCKED;
-    currentTaskGlobal->currentTick = timeTick + timeout;
+    currentTaskGlobal->state = TaskState::Blocked;
+    currentTaskGlobal->currentTick = sche.timeTick + timeout;
 
-    currentTaskGlobal->dataWaitState = DATA_STATE_WAITING;
+    currentTaskGlobal->blockedReason = BlockedReason::Wait;
     currentTaskGlobal->signalData = 0;
 
-    deleteTCBFromReadyList(currentTaskGlobal);
-    insertTCBToDelayList(currentTaskGlobal);
+    sche.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+    sche.insertTCBToDelayList(currentTaskGlobal->taskID);
 
     trigger_context_switch();
 
-    E_TASK_DATA_STATE initialState = currentTaskGlobal->dataWaitState;
-    currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
+    BlockedReason initialState = currentTaskGlobal->blockedReason;
+    currentTaskGlobal->blockedReason = BlockedReason::None;
     *pdata = currentTaskGlobal->signalData;
 
-    return (initialState == currentTaskGlobal->dataWaitState);
+    return (initialState == currentTaskGlobal->blockedReason);
 }
 
 void LivingRTOS::enQueue(int queueID, void *pdata)
@@ -322,18 +160,18 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
     }
 
     int receiverTaskID = queuePool[queueID].receiverTaskID;
-    Task &receiverTask = tcbPool[receiverTaskID];
+    Task *receiverTask = sche.getTaskPointer(receiverTaskID);
 
     memcpy(queuePool[queueID].rear, pdata, queuePool[queueID].elementSize);
     moveRearPointerOfQueue(queueID);
 
-    if (receiverTask.dataWaitState == DATA_STATE_WAITING)
+    if (receiverTask->blockedReason == BlockedReason::Wait)
     {
-        receiverTask.state = STATE_READY;
-        receiverTask.dataWaitState = DATA_STATE_NONE;
+        receiverTask->state = TaskState::Ready;
+        receiverTask->blockedReason = BlockedReason::None;
 
-        deleteTCBFromDelayList(&receiverTask);
-        insertTCBToReadyList(&receiverTask);
+        sche.deleteTCBFromDelayList(receiverTaskID);
+        sche.insertTCBToReadyList(receiverTaskID);
 
         trigger_context_switch();
     }
@@ -393,11 +231,11 @@ void LivingRTOS::moveRearPointerOfQueue(int queueID)
 
 char *LivingRTOS::allocateQueueMemory(int size_arr)
 {
-    static char *queueMemPtr = (char *)queue_arr;
+    static char *queueMemPtr = (char *)queueStack;
 
     int size = (size_arr + 7) & ~(0x7);
 
-    if (queueMemPtr + size >= (char *)queue_arr + QUEUE_ARR_SIZE)
+    if (queueMemPtr + size >= (char *)queueStack + QUEUE_STACK_SIZE)
     {
         return nullptr;
     }
@@ -457,18 +295,18 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
         return true;
     }
 
-    currentTaskGlobal->state = STATE_BLOCKED;
-    currentTaskGlobal->currentTick = timeTick + timeout;
-    currentTaskGlobal->dataWaitState = DATA_STATE_WAITING;
+    currentTaskGlobal->state = TaskState::Blocked;
+    currentTaskGlobal->currentTick = sche.timeTick + timeout;
+    currentTaskGlobal->blockedReason = BlockedReason::Wait;
 
-    deleteTCBFromReadyList(currentTaskGlobal);
-    insertTCBToDelayList(currentTaskGlobal);
+    sche.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+    sche.insertTCBToDelayList(currentTaskGlobal->taskID);
 
     trigger_context_switch();
 
-    if (currentTaskGlobal->dataWaitState != DATA_STATE_NONE)
+    if (currentTaskGlobal->blockedReason != BlockedReason::None)
     {
-        currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
+        currentTaskGlobal->blockedReason = BlockedReason::None;
         return false;
     }
 
@@ -482,20 +320,48 @@ void LivingRTOS::wakeUpTaskWithSignal(int taskID, int value)
 {
     scopedItrLock lock;
 
-    if (tcbPool[taskID].state == STATE_BLOCKED && tcbPool[taskID].dataWaitState == DATA_STATE_WAITING)
-    {
-        tcbPool[taskID].state = STATE_READY;
-        tcbPool[taskID].dataWaitState = DATA_STATE_NONE;
-        tcbPool[taskID].signalData = value;
+    Task *curTask = sche.getTaskPointer(taskID);
 
-        deleteTCBFromDelayList(&tcbPool[taskID]);
-        insertTCBToReadyList(&tcbPool[taskID]);
+    if (curTask->state == TaskState::Blocked && curTask->blockedReason == BlockedReason::Wait)
+    {
+        curTask->state = TaskState::Ready;
+        curTask->blockedReason = BlockedReason::None;
+        curTask->signalData = value;
+
+        sche.deleteTCBFromDelayList(taskID);
+
+        sche.insertTCBToReadyList(taskID);
 
         trigger_context_switch();
     }
 }
 
-std::array<Task *, NUM_PRIO> &LivingRTOS::getReadyList(void)
+void LivingRTOS::executeTaskSwitching(void)
 {
-    return readyTaskPool;
+    sche.executeTaskSwitching();
+}
+
+int LivingRTOS::createMutex(void)
+{
+    scopedItrLock lock;
+    static int mutexIdx = 0;
+
+    if (mutexIdx >= MAX_MUTEX)
+    {
+        return FAIL;
+    }
+
+    mutexIdx++;
+
+    return mutexIdx;
+}
+
+void LivingRTOS::takeMutex(int mutexID)
+{
+    mutexPool[mutexID].acquire(*currentTaskGlobal, sche);
+}
+
+void LivingRTOS::giveMutex(int mutexID)
+{
+    mutexPool[mutexID].release(*currentTaskGlobal, sche);
 }

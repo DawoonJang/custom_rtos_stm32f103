@@ -1,17 +1,17 @@
 #ifndef __OS_H__
 #define __OS_H__
 
+#include "mutex.h"
 #include "option.h"
+#include "scheduler.h"
 #include "task.h"
-#include <array>
-#include <stack>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-    void SwitchingTask(void);
+    void switchingTask(void);
 
 #ifdef __cplusplus
 }
@@ -22,52 +22,33 @@ typedef enum _fail_value
     FAIL = -99,
 } E_FAIL_VALUE;
 
-typedef enum _task_blocked_state
-{
-    BLOCKED_STATE_NONE = 0,
-    BLOCKED_STATE_WAIT
-
-} E_TASK_BLOCKED_STATE;
-
 class LivingRTOS
 {
   private:
-    std::array<Task, MAX_TCB> tcbPool{};
-    std::array<Task *, NUM_PRIO> readyTaskPool{};
-    std::stack<Task *> freeTaskPool;
-    Task *delayList;
-
     char *stack_limit;
     char *pstack;
     char stack[STACK_SIZE] __attribute__((__aligned__(8)));
 
     Queue queuePool[MAX_QUEUE];
-    char queue_arr[QUEUE_ARR_SIZE] __attribute__((__aligned__(8)));
+    char queueStack[QUEUE_STACK_SIZE] __attribute__((__aligned__(8)));
+
+    Mutex mutexPool[MAX_MUTEX];
+
+    Scheduler sche;
 
   public:
     LivingRTOS();
+
+    void executeTaskSwitching(void);
 
     int createTask(void (*ptask)(void *), void *para, int prio, int size_stack);
     void deleteTask(int task_no);
     void scheduleTask(void);
 
-    std::array<Task *, NUM_PRIO> &getReadyList(void);
-
-    Task *getTCBFromFreeList(void);
-
-    void insertTCBToFreeList(Task *const ptask);
-
-    Task *currentTask;
-
     int timeTick;
+    int osStartFlag;
 
     bool waitSignalForDataTransfer(int *, int);
-
-    void insertTCBToReadyList(Task *const);
-    void insertTCBToDelayList(Task *const);
-
-    void deleteTCBFromReadyList(Task *const);
-    void deleteTCBFromDelayList(Task *const);
 
     void increaseTick(void);
     void delayByTick(unsigned int delay_time);
@@ -85,6 +66,10 @@ class LivingRTOS
     char *allocateQueueMemory(int size_arr);
 
     void wakeUpTaskWithSignal(int, int);
+
+    int createMutex(void);
+    void takeMutex(int);
+    void giveMutex(int);
 
   private:
     char *getStack(int);

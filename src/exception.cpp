@@ -137,7 +137,7 @@ extern "C"
 
     volatile int Uart1_Rx_In = 0;
     volatile int Uart1_Rx_Data = 0;
-
+    extern volatile int uartQueue;
     void USART1_IRQHandler(void)
     {
         char ch = USART1->DR;
@@ -146,7 +146,7 @@ extern "C"
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
 
-        rtos.enQueue(TASK_2, &ch);
+        rtos.enQueue(uartQueue, &ch);
     }
 
 #ifdef __cplusplus

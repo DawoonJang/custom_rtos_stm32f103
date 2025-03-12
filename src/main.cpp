@@ -8,31 +8,34 @@ extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
 
-// void Task1(void *para)
-// {
-//     Task *tcbPool = rtos.getTCBInfo(0);
+volatile int signalQueueID;
+volatile int uartQueue;
+volatile int mutexID;
 
-//     for (;;)
-//     {
-//         Uart_Printf("Task1:\n");
-//         LED_0_Toggle();
-//         rtos.delayByTick(1000);
-//     }
-// }
+#ifdef TESTCASE1
+void Task1(void *para)
+{
 
-// void Task2(void *para)
-// {
-//     Task *tcbPool = rtos.getTCBInfo(1);
+    for (;;)
+    {
+        Uart_Printf("Task1:\n");
+        LED_0_Toggle();
+        rtos.delayByTick(1000);
+    }
+}
 
-//     for (;;)
-//     {
-//         Uart_Printf("Task2:\n");
-//         LED_1_Toggle();
-//         rtos.delayByTick(500);
-//     }
-// }
+void Task2(void *para)
+{
+    for (;;)
+    {
+        Uart_Printf("Task2:\n");
+        LED_1_Toggle();
+        rtos.delayByTick(500);
+    }
+}
+#endif
 
-int queueID;
+#ifdef TESTCASE2
 extern volatile int keyWaitTaskID;
 
 void Task1(void *para)
@@ -44,7 +47,7 @@ void Task1(void *para)
     {
         if (rtos.waitSignalForDataTransfer(&fflag, 5000) == true)
         {
-            rtos.enQueue(queueID, &cnt);
+            rtos.enQueue(signalQueueID, &cnt);
             LED_1_Toggle();
             cnt++;
         }
@@ -57,12 +60,13 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    queueID = rtos.createQueue(1, sizeof(int));
+    signalQueueID = rtos.createQueue(1, sizeof(int));
+    uartQueue = rtos.createQueue(1, sizeof(int));
     int recvData;
 
     for (;;)
     {
-        if (!rtos.deQueue(queueID, &recvData, 1000))
+        if (!rtos.deQueue(signalQueueID, &recvData, 1000))
         {
             LED_0_Toggle();
         }
@@ -83,13 +87,87 @@ void Task3(void *para)
         rtos.delayByTick(2000);
     }
 }
+#endif
+
+#ifdef TESTCASE3
+void Task1(void *para)
+{
+    volatile int j;
+    rtos.delayByTick(500);
+
+    Uart_Printf("\nTask1 : Semaphore Take!\n");
+
+    rtos.takeMutex(mutexID);
+
+    for (j = 0; j < 10; j++)
+    {
+        systemDelay(250);
+
+        LED_1_Toggle();
+    }
+
+    rtos.giveMutex(mutexID);
+
+    Uart_Printf("Task1 : Semaphore Give!\n");
+    for (;;)
+    {
+        rtos.delayByTick(500);
+    }
+}
+
+void Task2(void *para)
+{
+    rtos.delayByTick(7000);
+    Uart_Printf("\nTask2 : Run!\n");
+
+    for (;;)
+    {
+        systemDelay(1000);
+
+        Uart_Printf(".");
+    }
+}
+
+void Task3(void *para)
+{
+    volatile int j;
+    mutexID = rtos.createMutex();
+
+    Uart_Printf("\nTask3 : Semaphore Take!\n");
+
+    rtos.takeMutex(mutexID);
+
+    for (j = 0; j < 10; j++)
+    {
+        systemDelay(250);
+
+        LED_0_Toggle();
+    }
+
+    rtos.giveMutex(mutexID);
+    Uart_Printf("Task3 : Semaphore Give!\n");
+
+    for (;;)
+    {
+        rtos.delayByTick(1000);
+        Uart_Printf("Task3: Still Running\n");
+    }
+}
+#endif
 
 int main(void)
 {
-    keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
-    rtos.createTask(Task2, nullptr, 2, 1024);
-    // rtos.createTask(Task3, nullptr, 3, 1024, 3);
+#ifdef TESTCASE2
 
+    keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
+    rtos.createTask(Task2, nullptr, 2, 1024); // Equal Prio is not working
+#endif
+
+#ifdef TESTCASE3
+    rtos.createTask(Task1, nullptr, 1, 1024);
+    rtos.createTask(Task2, nullptr, 2, 1024);
+    rtos.createTask(Task3, nullptr, 3, 1024);
+#endif
     rtos.scheduleTask();
 
     while (1)
@@ -98,65 +176,4 @@ int main(void)
     }
 
     return 0;
-}
-
-void SystemInit()
-{
-    // Because the debugger switches PLL on, we may
-    // need to switch back to the HSI oscillator without PLL
-
-    // Switch to HSI oscillator
-    MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_HSI);
-
-    // Wait until the switch is done
-    while ((RCC->CFGR & RCC_CFGR_SWS_Msk) != RCC_CFGR_SWS_HSI)
-    {
-    }
-
-    // Disable the PLL, then we can configure it
-    CLEAR_BIT(RCC->CR, RCC_CR_PLLON);
-
-    // Flash latency 2 wait states
-    MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, FLASH_ACR_LATENCY_1);
-
-    // Enable HSE oscillator
-    SET_BIT(RCC->CR, RCC_CR_HSEON);
-
-    // Wait until HSE oscillator is ready
-    while (!READ_BIT(RCC->CR, RCC_CR_HSERDY))
-    {
-    }
-
-    // 72 MHz using the 8 MHz HSE oscillator with 9x PLL, lowspeed I/O runs at 36 MHz
-    WRITE_REG(RCC->CFGR, RCC_CFGR_PLLSRC + RCC_CFGR_PLLMULL9 + RCC_CFGR_PPRE1_DIV2);
-
-    // Enable PLL
-    SET_BIT(RCC->CR, RCC_CR_PLLON);
-
-    // Wait until PLL is ready
-    while (!READ_BIT(RCC->CR, RCC_CR_PLLRDY))
-    {
-    }
-
-    // Select PLL as clock source
-    MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
-
-    // Update variable
-    // SystemCoreClock = SYSCLK;
-    ClockInit();
-
-    Uart1_Init(115200);
-
-    Key_ISR_Enable(1);
-    Uart1_RX_Interrupt_Enable(1);
-
-    /* LED INIT */
-    Macro_Set_Bit(RCC->APB2ENR, 3);
-    Macro_Write_Block(GPIOB->CRH, 0xff, 0x66, 0);
-    Macro_Set_Area(GPIOB->ODR, 0x3, 8);
-    /* LED INIT */
-
-    SCB->VTOR = 0x08003000;
-    SCB->SHCSR = 7 << 16;
-    SCB->AIRCR = 0x05FA0000;
 }

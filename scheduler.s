@@ -6,7 +6,7 @@
 	.align 4
 
     .extern currentTaskGlobal
-    .extern SwitchingTask
+    .extern switchingTask
 
 	.global _PendSV_Handler
 	.type 	_PendSV_Handler, %function
@@ -22,7 +22,7 @@ _PendSV_Handler:
     push    {r3, lr}
     cpsid   i
 
-    bl      SwitchingTask
+    bl      switchingTask
 
     cpsie   i
     pop     {r3, lr}
@@ -38,11 +38,11 @@ _PendSV_Handler:
     .global _SVC_Handler
 	.type 	_SVC_Handler, %function
 _SVC_Handler:
-	ldr		R3, =currentTaskGlobal
-	ldr		R1, [R3]
-	ldr		R0, [R1]
-	ldmia	R0!, {R4-R11}
-	msr		PSP, R0
+    ldr     r3, =currentTaskGlobal
+    ldr     r1, [r3]
+    ldr     r0, [r1]
+    ldmia   r0!, {r4-r11}
+    msr     psp, r0
 
-	orr		LR, LR, #0xd
-	bx		LR
+    orr     lr, lr, #0xd
+    bx      lr
