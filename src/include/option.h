@@ -1,7 +1,7 @@
 #define DEBUG
 
-#define TESTCASE1
-// #define TESTCASE2
+// #define TESTCASE1
+#define TESTCASE2
 // #define TESTCASE3
 
 /* SYSTEM */

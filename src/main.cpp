@@ -7,12 +7,14 @@
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int Uart1_Rx_Data;
+extern volatile int keyWaitTaskID;
 
 volatile int signalQueueID;
 volatile int uartQueue;
 volatile int mutexID;
 
 #ifdef TESTCASE1
+
 void Task1(void *para)
 {
 
@@ -33,10 +35,7 @@ void Task2(void *para)
         rtos.delayByTick(500);
     }
 }
-#endif
-
-#ifdef TESTCASE2
-extern volatile int keyWaitTaskID;
+#elif defined(TESTCASE2)
 
 void Task1(void *para)
 {
@@ -87,9 +86,9 @@ void Task3(void *para)
         rtos.delayByTick(2000);
     }
 }
-#endif
 
-#ifdef TESTCASE3
+#elif defined(TESTCASE3)
+
 void Task1(void *para)
 {
     volatile int j;
@@ -158,19 +157,21 @@ void Task3(void *para)
 int main(void)
 {
 #ifdef TESTCASE1
+
     rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024);
-#endif
 
-#ifdef TESTCASE2
+#elif defined(TESTCASE2)
+
     keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024); // Equal Prio is not working
-#endif
 
-#ifdef TESTCASE3
+#elif defined(TESTCASE3)
+
     rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024);
     rtos.createTask(Task3, nullptr, 3, 1024);
+
 #endif
     rtos.scheduleTask();
 
