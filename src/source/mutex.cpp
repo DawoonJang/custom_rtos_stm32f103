@@ -1,5 +1,5 @@
-#include "mutex.h"
-#include "device_driver.h"
+#include "../include/mutex.h"
+#include "../include/device_driver.h"
 #include <list>
 
 void Mutex::acquire(Task &currentTask, Scheduler &scheduler)

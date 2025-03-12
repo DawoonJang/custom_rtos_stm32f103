@@ -1,5 +1,5 @@
-#include "os.h"
-#include "device_driver.h"
+#include "../include/os.h"
+#include "../include/device_driver.h"
 #include <algorithm>
 
 #include <string.h>

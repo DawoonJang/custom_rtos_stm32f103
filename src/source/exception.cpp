@@ -1,5 +1,5 @@
-#include "device_driver.h"
-#include "os.h"
+#include "../include/device_driver.h"
+#include "../include/os.h"
 
 #ifdef __cplusplus
 extern "C"

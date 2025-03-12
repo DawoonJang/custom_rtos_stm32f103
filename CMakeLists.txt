@@ -34,8 +34,7 @@ set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${CFCOMMON} -x assembler-with-cpp")
 set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/STM32F103C8TX_FLASH.ld ${LIBRARY_PATHS} ${LDFLAGS_EXTRA}")
 
 
-# 소스 파일 찾기
-file(GLOB SOURCE_FILES CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "*.s")
+file(GLOB SOURCE_FILES CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/source/*.c" "src/source/*.cpp" "*.s")
 
 # 실행 파일 생성
 add_executable(${PROJECT_NAME}.elf ${SOURCE_FILES})

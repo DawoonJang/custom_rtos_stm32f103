@@ -1,5 +1,5 @@
-#include "scheduler.h"
-#include "device_driver.h"
+#include "../include/scheduler.h"
+#include "../include/device_driver.h"
 
 extern Task *currentTaskGlobal;
 

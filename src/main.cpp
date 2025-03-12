@@ -1,6 +1,6 @@
-#include "device_driver.h"
-#include "os.h"
-#include "task.h"
+#include "include/device_driver.h"
+#include "include/os.h"
+#include "include/task.h"
 
 #include <stdint.h>
 
@@ -158,7 +158,6 @@ void Task3(void *para)
 int main(void)
 {
 #ifdef TESTCASE2
-
     keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024); // Equal Prio is not working
 #endif
