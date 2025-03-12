@@ -1,4 +1,4 @@
-// Bit Operation
+#pragma once
 
 #define Macro_Set_Bit(dest, pos) ((dest) |= ((unsigned)0x1 << (pos)))
 #define Macro_Clear_Bit(dest, pos) ((dest) &= ~((unsigned)0x1 << (pos)))

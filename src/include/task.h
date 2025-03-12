@@ -1,7 +1,9 @@
-#ifndef __TASK_H__
-#define __TASK_H__
+#pragma once
 
-#include <vector>
+#include "option.h"
+#include "task.h"
+#include <array>
+#include <stack>
 
 enum class TaskState
 {
@@ -41,21 +43,48 @@ struct Task
     Task *prev;
     Task *next;
     int currentTick;
-    int signalData;
+    int recvSignal;
 
     Task()
         : top_of_stack(nullptr), taskID(-1), prio(0), state(TaskState::Ready), blockedReason(BlockedReason::None),
-          prev(nullptr), next(nullptr), currentTick(0), signalData(0)
+          prev(nullptr), next(nullptr), currentTick(0), recvSignal(0)
     {
         ;
     }
 
     Task(int id, int priority)
         : top_of_stack(nullptr), taskID(id), prio(priority), state(TaskState::Ready),
-          blockedReason(BlockedReason::None), prev(nullptr), next(nullptr), currentTick(0), signalData(0)
+          blockedReason(BlockedReason::None), prev(nullptr), next(nullptr), currentTick(0), recvSignal(0)
     {
         ;
     }
 };
 
-#endif
+class TaskManager
+{
+  public:
+    std::array<Task, MAX_TCB> tcbPool{};
+    std::array<Task *, NUM_PRIO> readyTaskPool{};
+    std::stack<Task *> freeTaskPool;
+    Task *delayList;
+    int timeTick;
+
+    TaskManager();
+
+    void insertTCBToDelayList(const int taskID);
+    void deleteTCBFromDelayList(const int taskID);
+    void insertTCBToFreeList(const int taskID);
+    Task *getTCBFromFreeList(void);
+    void insertTCBToReadyList(const int taskID);
+    void deleteTCBFromReadyList(const int taskID);
+
+    void deleteTask(int taskID);
+
+    Task *getTaskPointer(int taskID);
+
+    void executeTaskSwitching(void);
+    void increaseTick(void);
+    void delayTask(unsigned int ticks);
+};
+
+void ReceiveAndPlayTask(void *para);

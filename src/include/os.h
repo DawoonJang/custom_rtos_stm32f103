@@ -1,9 +1,7 @@
-#ifndef __OS_H__
-#define __OS_H__
+#pragma once
 
 #include "mutex.h"
 #include "option.h"
-#include "scheduler.h"
 #include "task.h"
 
 #ifdef __cplusplus
@@ -26,7 +24,7 @@ class LivingRTOS
 {
   private:
     char *stack_limit;
-    char *pstack;
+    char *stackPointer;
     char stack[STACK_SIZE] __attribute__((__aligned__(8)));
 
     Queue queuePool[MAX_QUEUE];
@@ -34,7 +32,7 @@ class LivingRTOS
 
     Mutex mutexPool[MAX_MUTEX];
 
-    Scheduler sche;
+    TaskManager taskManager;
 
   public:
     LivingRTOS();
@@ -48,10 +46,10 @@ class LivingRTOS
     int timeTick;
     int osStartFlag;
 
-    bool waitSignalForDataTransfer(int *, int);
+    bool waitForSignal(int *, int);
 
     void increaseTick(void);
-    void delayByTick(unsigned int delay_time);
+    void delay(unsigned int);
 
     bool deQueue(int, void *, int);
     void enQueue(int, void *);
@@ -65,14 +63,12 @@ class LivingRTOS
 
     char *allocateQueueMemory(int size_arr);
 
-    void wakeUpTaskWithSignal(int, int);
+    void sendSignal(int, int);
 
     int createMutex(void);
-    void takeMutex(int);
+    void lockMutex(int);
     void giveMutex(int);
 
   private:
-    char *getStack(int);
+    char *allocateStack(int);
 };
-
-#endif /* OS_H */

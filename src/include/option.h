@@ -1,3 +1,5 @@
+#pragma once
+
 #define DEBUG
 
 // #define TESTCASE1
@@ -26,3 +28,6 @@
 #define QUEUE_STACK_SIZE (1024)
 
 #define MAX_MUTEX (20)
+
+/* Player */
+#define WAV_HEADER_SIZE 44

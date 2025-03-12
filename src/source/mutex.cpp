@@ -1,8 +1,8 @@
 #include "../include/mutex.h"
 #include "../include/device_driver.h"
-#include <list>
+#include "../include/task.h"
 
-void Mutex::acquire(Task &currentTask, Scheduler &scheduler)
+void Mutex::lock(Task &currentTask, TaskManager &taskManager)
 {
     scopedItrLock lock;
 
@@ -16,16 +16,16 @@ void Mutex::acquire(Task &currentTask, Scheduler &scheduler)
 
         currentTask.state = TaskState::Blocked;
         currentTask.blockedReason = BlockedReason::Mutex;
-        scheduler.deleteTCBFromReadyList(currentTask.taskID);
+        taskManager.deleteTCBFromReadyList(currentTask.taskID);
 
-        Task *ownerTask = scheduler.getTaskPointer(ownerTaskID);
+        Task *ownerTask = taskManager.getTaskPointer(ownerTaskID);
         if (ownerTask->prio > currentTask.prio)
         {
             if (ownerTask->state == TaskState::Ready)
             {
-                scheduler.deleteTCBFromReadyList(ownerTaskID);
+                taskManager.deleteTCBFromReadyList(ownerTaskID);
                 ownerTask->prio = currentTask.prio;
-                scheduler.insertTCBToReadyList(ownerTaskID);
+                taskManager.insertTCBToReadyList(ownerTaskID);
             }
             else
             {
@@ -37,7 +37,7 @@ void Mutex::acquire(Task &currentTask, Scheduler &scheduler)
     }
 }
 
-void Mutex::release(Task &currentTask, Scheduler &scheduler)
+void Mutex::unlock(Task &currentTask, TaskManager &taskManager)
 {
     scopedItrLock lock;
 
@@ -51,9 +51,9 @@ void Mutex::release(Task &currentTask, Scheduler &scheduler)
 
     if (currentTask.prio != currentTask.originPrio)
     {
-        scheduler.deleteTCBFromReadyList(currentTask.taskID);
+        taskManager.deleteTCBFromReadyList(currentTask.taskID);
         currentTask.prio = currentTask.originPrio;
-        scheduler.insertTCBToReadyList(currentTask.taskID);
+        taskManager.insertTCBToReadyList(currentTask.taskID);
     }
 
     Task *highestWaitingTask = getHighestPriorityWaitingTask();
@@ -66,7 +66,7 @@ void Mutex::release(Task &currentTask, Scheduler &scheduler)
         highestWaitingTask->state = TaskState::Ready;
         highestWaitingTask->blockedReason = BlockedReason::None;
 
-        scheduler.insertTCBToReadyList(highestWaitingTask->taskID);
+        taskManager.insertTCBToReadyList(highestWaitingTask->taskID);
         trigger_context_switch();
     }
 }

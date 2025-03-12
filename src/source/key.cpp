@@ -11,7 +11,7 @@ int Key_Get_Pressed(void)
     return Macro_Extract_Area(~GPIOB->IDR, 0x3, 6);
 }
 
-void Key_Wait_Key_Released(void)
+void Key_Wait_Key_unlockd(void)
 {
     while (Key_Get_Pressed())
         ;

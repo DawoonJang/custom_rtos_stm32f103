@@ -1,5 +1,6 @@
 #include "../include/device_driver.h"
 #include "../include/os.h"
+#include "../include/sqe.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -132,21 +133,19 @@ extern "C"
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
 
-        rtos.wakeUpTaskWithSignal(keyWaitTaskID, keyValue);
+        rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;
-    volatile int Uart1_Rx_Data = 0;
-    extern volatile int uartQueue;
+    extern volatile int uartQueueID;
     void USART1_IRQHandler(void)
     {
-        char ch = USART1->DR;
-
+        systemDelay(500);
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
-        Uart1_Rx_Data = Uart1_Get_Pressed();
+        char Uart1_Rx_Data = Uart1_Get_Char();
 
-        rtos.enQueue(uartQueue, &ch);
+        rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }
 
 #ifdef __cplusplus

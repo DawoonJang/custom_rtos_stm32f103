@@ -21,7 +21,7 @@ extern "C"
 }
 #endif
 
-LivingRTOS::LivingRTOS() : stack_limit(stack), pstack(stack + STACK_SIZE)
+LivingRTOS::LivingRTOS() : stack_limit(stack), stackPointer(stack + STACK_SIZE)
 {
     createTask(
         [](void *para) {
@@ -33,37 +33,37 @@ LivingRTOS::LivingRTOS() : stack_limit(stack), pstack(stack + STACK_SIZE)
         nullptr, PRIO_LOWEST, 128);
 }
 
-char *LivingRTOS::getStack(int size)
+char *LivingRTOS::allocateStack(int size)
 {
     size = (size + 7) & ~0x7;
 
-    char *new_stack = pstack - size;
+    char *new_stack = stackPointer - size;
 
     if (new_stack < stack_limit)
     {
         return nullptr;
     }
 
-    pstack = new_stack;
-    return pstack;
+    stackPointer = new_stack;
+    return stackPointer;
 }
 
 int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack)
 {
     scopedItrLock lock;
 
-    Task *ptask = sche.getTCBFromFreeList();
+    Task *ptask = taskManager.getTCBFromFreeList();
 
     if (ptask == nullptr || size_stack < 0 || prio < 0)
     {
         return FAIL;
     }
 
-    ptask->top_of_stack = (unsigned long *)getStack(size_stack);
+    ptask->top_of_stack = (unsigned long *)allocateStack(size_stack);
 
     if (ptask->top_of_stack == nullptr)
     {
-        sche.insertTCBToFreeList(ptask->taskID);
+        taskManager.insertTCBToFreeList(ptask->taskID);
         return FAIL;
     }
 
@@ -75,14 +75,14 @@ int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int 
     ptask->top_of_stack[14] = (unsigned long)ptaskfunc;
     ptask->top_of_stack[15] = INIT_PSR;
 
-    sche.insertTCBToReadyList(ptask->taskID);
+    taskManager.insertTCBToReadyList(ptask->taskID);
 
     return ptask->taskID;
 }
 
 void LivingRTOS::deleteTask(int taskID)
 {
-    sche.deleteTask(taskID);
+    taskManager.deleteTask(taskID);
 }
 
 void LivingRTOS::scheduleTask(void)
@@ -115,32 +115,32 @@ void LivingRTOS::scheduleTask(void)
 
 void LivingRTOS::increaseTick(void)
 {
-    sche.increaseTick();
+    taskManager.increaseTick();
 }
 
-void LivingRTOS::delayByTick(unsigned int delay_time)
+void LivingRTOS::delay(unsigned int ticks)
 {
-    sche.delayByTick(delay_time);
+    taskManager.delayTask(ticks);
 }
 
-bool LivingRTOS::waitSignalForDataTransfer(int *pdata, int timeout)
+bool LivingRTOS::waitForSignal(int *pdata, int timeout)
 {
     scopedItrLock lock;
 
     currentTaskGlobal->state = TaskState::Blocked;
-    currentTaskGlobal->currentTick = sche.timeTick + timeout;
+    currentTaskGlobal->currentTick = taskManager.timeTick + timeout;
 
     currentTaskGlobal->blockedReason = BlockedReason::Wait;
-    currentTaskGlobal->signalData = 0;
+    currentTaskGlobal->recvSignal = 0;
 
-    sche.deleteTCBFromReadyList(currentTaskGlobal->taskID);
-    sche.insertTCBToDelayList(currentTaskGlobal->taskID);
+    taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+    taskManager.insertTCBToDelayList(currentTaskGlobal->taskID);
 
     trigger_context_switch();
 
     BlockedReason initialState = currentTaskGlobal->blockedReason;
     currentTaskGlobal->blockedReason = BlockedReason::None;
-    *pdata = currentTaskGlobal->signalData;
+    *pdata = currentTaskGlobal->recvSignal;
 
     return (initialState == currentTaskGlobal->blockedReason);
 }
@@ -149,7 +149,7 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
 {
     scopedItrLock lock;
 
-    if (queuePool[queueID].buffer == nullptr)
+    if (queuePool[queueID].front == nullptr)
     {
         return;
     }
@@ -160,7 +160,7 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
     }
 
     int receiverTaskID = queuePool[queueID].receiverTaskID;
-    Task *receiverTask = sche.getTaskPointer(receiverTaskID);
+    Task *receiverTask = taskManager.getTaskPointer(receiverTaskID);
 
     memcpy(queuePool[queueID].rear, pdata, queuePool[queueID].elementSize);
     moveRearPointerOfQueue(queueID);
@@ -170,8 +170,8 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
         receiverTask->state = TaskState::Ready;
         receiverTask->blockedReason = BlockedReason::None;
 
-        sche.deleteTCBFromDelayList(receiverTaskID);
-        sche.insertTCBToReadyList(receiverTaskID);
+        taskManager.deleteTCBFromDelayList(receiverTaskID);
+        taskManager.insertTCBToReadyList(receiverTaskID);
 
         trigger_context_switch();
     }
@@ -296,11 +296,11 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     }
 
     currentTaskGlobal->state = TaskState::Blocked;
-    currentTaskGlobal->currentTick = sche.timeTick + timeout;
+    currentTaskGlobal->currentTick = taskManager.timeTick + timeout;
     currentTaskGlobal->blockedReason = BlockedReason::Wait;
 
-    sche.deleteTCBFromReadyList(currentTaskGlobal->taskID);
-    sche.insertTCBToDelayList(currentTaskGlobal->taskID);
+    taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+    taskManager.insertTCBToDelayList(currentTaskGlobal->taskID);
 
     trigger_context_switch();
 
@@ -316,21 +316,20 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     return true;
 }
 
-void LivingRTOS::wakeUpTaskWithSignal(int taskID, int value)
+void LivingRTOS::sendSignal(int destTaskID, int signal)
 {
     scopedItrLock lock;
 
-    Task *curTask = sche.getTaskPointer(taskID);
+    Task *destTask = taskManager.getTaskPointer(destTaskID);
 
-    if (curTask->state == TaskState::Blocked && curTask->blockedReason == BlockedReason::Wait)
+    if (destTask->state == TaskState::Blocked && destTask->blockedReason == BlockedReason::Wait)
     {
-        curTask->state = TaskState::Ready;
-        curTask->blockedReason = BlockedReason::None;
-        curTask->signalData = value;
+        destTask->state = TaskState::Ready;
+        destTask->blockedReason = BlockedReason::None;
+        destTask->recvSignal = signal;
 
-        sche.deleteTCBFromDelayList(taskID);
-
-        sche.insertTCBToReadyList(taskID);
+        taskManager.deleteTCBFromDelayList(destTaskID);
+        taskManager.insertTCBToReadyList(destTaskID);
 
         trigger_context_switch();
     }
@@ -338,7 +337,7 @@ void LivingRTOS::wakeUpTaskWithSignal(int taskID, int value)
 
 void LivingRTOS::executeTaskSwitching(void)
 {
-    sche.executeTaskSwitching();
+    taskManager.executeTaskSwitching();
 }
 
 int LivingRTOS::createMutex(void)
@@ -356,12 +355,12 @@ int LivingRTOS::createMutex(void)
     return mutexIdx;
 }
 
-void LivingRTOS::takeMutex(int mutexID)
+void LivingRTOS::lockMutex(int mutexID)
 {
-    mutexPool[mutexID].acquire(*currentTaskGlobal, sche);
+    mutexPool[mutexID].lock(*currentTaskGlobal, taskManager);
 }
 
 void LivingRTOS::giveMutex(int mutexID)
 {
-    mutexPool[mutexID].release(*currentTaskGlobal, sche);
+    mutexPool[mutexID].unlock(*currentTaskGlobal, taskManager);
 }

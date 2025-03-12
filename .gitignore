@@ -52,3 +52,7 @@ Mkfile.old
 dkms.conf
 
 build
+
+*.mp3
+*.wmv
+*.pyc

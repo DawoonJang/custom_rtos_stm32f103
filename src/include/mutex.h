@@ -1,7 +1,5 @@
-#ifndef __MUTEX_H__
-#define __MUTEX_H__
+#pragma once
 
-#include "scheduler.h"
 #include "task.h"
 #include <list>
 
@@ -12,8 +10,8 @@ class Mutex
     {
     }
 
-    void acquire(Task &currentTask, Scheduler &scheduler);
-    void release(Task &currentTask, Scheduler &scheduler);
+    void lock(Task &currentTask, TaskManager &taskManager);
+    void unlock(Task &currentTask, TaskManager &taskManager);
 
     void changeMutexStatus(bool available, int ownerTaskID);
     int getOwnerTaskID(void);
@@ -27,5 +25,3 @@ class Mutex
 
     Task *getHighestPriorityWaitingTask(void);
 };
-
-#endif

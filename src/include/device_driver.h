@@ -1,7 +1,5 @@
-#ifndef __DEVICE_DRIVER_H__
-#define __DEVICE_DRIVER_H__
+#pragma once
 
-#include "ar.h"
 #include "macro.h"
 #include "malloc.h"
 #include "option.h"
@@ -60,7 +58,7 @@ extern "C"
     // Key.c
     extern void Key_Poll_Init(void);
     extern int Key_Get_Pressed(void);
-    extern void Key_Wait_Key_Released(void);
+    extern void Key_Wait_Key_unlockd(void);
     extern int Key_Wait_Key_Pressed(void);
     extern void Key_ISR_Enable(int);
 
@@ -86,5 +84,3 @@ struct scopedItrLock
         enable_interrupts();
     }
 };
-
-#endif
