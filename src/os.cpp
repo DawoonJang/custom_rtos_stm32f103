@@ -436,18 +436,18 @@ int LivingRTOS::createQueue(int capacity, int elementSize)
     return qID;
 }
 
-int LivingRTOS::deQueue(int queueID, void *data, int timeout)
+bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
 {
     scopedItrLock lock;
 
     if (queuePool[queueID].buffer == nullptr)
     {
-        return FAIL;
+        return false;
     }
 
     if (queuePool[queueID].receiverTaskID != currentTaskGlobal->taskID)
     {
-        return FAIL;
+        return false;
     }
 
     if (!isQueueEmpty(queueID))
@@ -470,7 +470,7 @@ int LivingRTOS::deQueue(int queueID, void *data, int timeout)
     if (currentTaskGlobal->dataWaitState != DATA_STATE_NONE)
     {
         currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
-        return FAIL;
+        return false;
     }
 
     memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);

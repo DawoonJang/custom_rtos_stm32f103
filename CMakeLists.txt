@@ -65,3 +65,13 @@ add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
     COMMAND ${CMAKE_OBJDUMP} -h -S "${PROJECT_NAME}.elf" > "${PROJECT_NAME}.map"
     COMMENT "Generating map file ${PROJECT_NAME}.map"
 )
+
+add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
+    COMMAND ${CMAKE_OBJDUMP} -x -D "${PROJECT_NAME}.elf" > "${PROJECT_NAME}__dump.txt"
+    COMMENT "Generating __dump.txt"
+)
+
+add_custom_command(TARGET "${PROJECT_NAME}.elf" POST_BUILD
+    COMMAND ${CMAKE_OBJDUMP} -x -D -S "${PROJECT_NAME}.elf" > "${PROJECT_NAME}__dump_all.txt"
+    COMMENT "Generating __dump_all.txt"
+)
