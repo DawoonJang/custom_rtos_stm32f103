@@ -17,3 +17,13 @@
 [7] 이전 문제점 해결 내용 => asm 코드 구현 완료, exception 이해도 상승
 [8] 잔여 미해결 문제점 내용 => X
 [9] 개발 결과물 제출 여부 : O
+
+[1] 1 /  SW2Pjt
+[2] 최준하 장다운 이승종
+[3] 25.03.12
+[4] 오늘 진행 업무 계획 => Delay Based Blocked State 구현
+[5] 오늘 진행 업무 현황 => Delay Based Blocked State 정상 동작 확인, 
+[6] 문제점 및 검토 필요 사항 => Task State 별 List에 대해 Priority Queue 적용 논의 필요(프로젝트 deadline, 소요 인력 고려), 
+[7] 이전 문제점 해결 내용 => TCB상태에 따른 Scheduling 전략 팀 내 확립 완료(State 기반 Linked list 활용하여 최소 우선순위 CPU 점유할 수 있도록)
+[8] 잔여 미해결 문제점 내용 => 하드웨어 구성 시 스펙 확인(전력 소모)
+[9] 개발 결과물 제출 여부 : O (~ Delay Based Blocked State 구현 완료 까지)
