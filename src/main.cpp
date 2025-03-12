@@ -157,6 +157,11 @@ void Task3(void *para)
 
 int main(void)
 {
+#ifdef TESTCASE1
+    rtos.createTask(Task1, nullptr, 1, 1024);
+    rtos.createTask(Task2, nullptr, 2, 1024);
+#endif
+
 #ifdef TESTCASE2
     keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024); // Equal Prio is not working

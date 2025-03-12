@@ -1,8 +1,8 @@
 #define DEBUG
 
-// #define TESTCASE1
+#define TESTCASE1
 // #define TESTCASE2
-#define TESTCASE3
+// #define TESTCASE3
 
 /* SYSTEM */
 #define SYSCLK 72000000 // 72MHz

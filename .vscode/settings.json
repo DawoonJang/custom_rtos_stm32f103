@@ -65,5 +65,5 @@
         "stop_token": "cpp",
         "thread": "cpp"
     },
-    "C_Cpp.default.compilerPath": "/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin/arm-none-eabi-gcc"
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }
