@@ -45,7 +45,6 @@ void Key_ISR_Enable(int en)
         NVIC_ClearPendingIRQ((IRQn_Type)23);
         NVIC_EnableIRQ((IRQn_Type)23);
     }
-
     else
     {
         NVIC_DisableIRQ((IRQn_Type)23);

@@ -52,6 +52,7 @@ void Uart1_Send_String(char *pt)
 
 void Uart1_Printf(const char *fmt, ...)
 {
+#ifdef DEBUG
     va_list ap;
     char string[256];
 
@@ -59,6 +60,7 @@ void Uart1_Printf(const char *fmt, ...)
     vsprintf(string, fmt, ap);
     Uart1_Send_String(string);
     va_end(ap);
+#endif
 }
 
 char Uart1_Get_Pressed(void)

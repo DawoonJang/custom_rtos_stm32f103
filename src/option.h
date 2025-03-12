@@ -1,3 +1,5 @@
+// #define DEBUG
+
 /* SYSTEM */
 #define SYSCLK 72000000 // 72MHz
 #define HCLK SYSCLK
@@ -11,10 +13,6 @@
 #define HEAP_SIZE (2 * 1024)
 #define HEAP_LIMIT (HEAP_BASE + HEAP_SIZE)
 
-#define MSP_BASE (RAM_END + 1)
-#define MSP_SIZE (2 * 1024)
-#define MSP_LIMIT (MSP_BASE - MSP_SIZE)
-
 /* OS */
 #define MAX_TCB (5)
 
@@ -22,9 +20,9 @@
 #define PRIO_LOWEST (10)
 #define NUM_PRIO (PRIO_LOWEST - PRIO_HIGHEST + 1)
 
-#define STACK_SIZE (8 * 1024)
+#define STACK_SIZE (4 * 1024)
 #define INIT_PSR (0x01000000)
 #define TICK_MS (5)
 
 #define MAX_QUEUE (5)
-#define QUEUE_ARR_SIZE (1024 * 3)
+#define QUEUE_ARR_SIZE (1024)

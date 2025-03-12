@@ -24,7 +24,7 @@ extern "C"
 
         for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
         {
-            if (readyTaskPool[prio] != nullptr)
+            if (readyTaskPool.at(prio) != nullptr)
             {
                 currentTaskGlobal = readyTaskPool[prio];
                 return;
@@ -125,7 +125,7 @@ void LivingRTOS::deleteTCBFromReadyList(Task *const ptask)
 
 char *LivingRTOS::getStack(int size)
 {
-    size = (size + 7) & ~0x7; // 8-byte alignment
+    size = (size + 7) & ~0x7;
 
     char *new_stack = pstack - size;
 
@@ -287,7 +287,7 @@ void LivingRTOS::delayByTick(unsigned int delay_time)
 
 bool LivingRTOS::waitSignalForDataTransfer(int *pdata, int timeout)
 {
-    disable_interrupts();
+    scopedItrLock lock;
 
     currentTaskGlobal->state = STATE_BLOCKED;
     currentTaskGlobal->currentTick = timeTick + timeout;
@@ -299,7 +299,6 @@ bool LivingRTOS::waitSignalForDataTransfer(int *pdata, int timeout)
     insertTCBToDelayList(currentTaskGlobal);
 
     trigger_context_switch();
-    enable_interrupts();
 
     E_TASK_DATA_STATE initialState = currentTaskGlobal->dataWaitState;
     currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
@@ -436,18 +435,18 @@ int LivingRTOS::createQueue(int capacity, int elementSize)
     return qID;
 }
 
-int LivingRTOS::deQueue(int queueID, void *data, int timeout)
+bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
 {
     scopedItrLock lock;
 
     if (queuePool[queueID].buffer == nullptr)
     {
-        return FAIL;
+        return false;
     }
 
     if (queuePool[queueID].receiverTaskID != currentTaskGlobal->taskID)
     {
-        return FAIL;
+        return false;
     }
 
     if (!isQueueEmpty(queueID))
@@ -470,7 +469,7 @@ int LivingRTOS::deQueue(int queueID, void *data, int timeout)
     if (currentTaskGlobal->dataWaitState != DATA_STATE_NONE)
     {
         currentTaskGlobal->dataWaitState = DATA_STATE_NONE;
-        return FAIL;
+        return false;
     }
 
     memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);

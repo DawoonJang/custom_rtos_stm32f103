@@ -62,7 +62,7 @@ void Task2(void *para)
 
     for (;;)
     {
-        if (rtos.deQueue(queueID, &recvData, 1000) == FAIL)
+        if (!rtos.deQueue(queueID, &recvData, 1000))
         {
             LED_0_Toggle();
         }

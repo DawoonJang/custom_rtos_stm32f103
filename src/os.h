@@ -20,10 +20,6 @@ extern "C"
 typedef enum _fail_value
 {
     FAIL = -99,
-    FAIL_TCB_ALLOCATION,
-    FAIL_TIME_OUT,
-    FAIL_QUEUE_EMPTY
-
 } E_FAIL_VALUE;
 
 typedef enum _task_blocked_state
@@ -41,11 +37,12 @@ class LivingRTOS
     std::stack<Task *> freeTaskPool;
     Task *delayList;
 
-    char stack[STACK_SIZE] __attribute__((__aligned__(8))); // Stack aligned to 8 bytes
-    Queue queuePool[MAX_QUEUE];
-    char queue_arr[QUEUE_ARR_SIZE] __attribute__((__aligned__(8)));
     char *stack_limit;
     char *pstack;
+    char stack[STACK_SIZE] __attribute__((__aligned__(8)));
+
+    Queue queuePool[MAX_QUEUE];
+    char queue_arr[QUEUE_ARR_SIZE] __attribute__((__aligned__(8)));
 
   public:
     LivingRTOS();
@@ -75,7 +72,7 @@ class LivingRTOS
     void increaseTick(void);
     void delayByTick(unsigned int delay_time);
 
-    int deQueue(int, void *, int);
+    bool deQueue(int, void *, int);
     void enQueue(int, void *);
     bool isQueueEmpty(int);
     bool isQueueFull(int);
