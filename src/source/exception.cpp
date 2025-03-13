@@ -128,6 +128,8 @@ extern "C"
 
     void EXTI9_5_IRQHandler(void)
     {
+        systemDelay(10);
+
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
 
         EXTI->PR = 0x3 << 6;
@@ -140,11 +142,11 @@ extern "C"
     extern volatile int uartQueueID;
     void USART1_IRQHandler(void)
     {
-        systemDelay(500);
+        systemDelay(10);
+
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
         char Uart1_Rx_Data = Uart1_Get_Char();
-
         rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }
 

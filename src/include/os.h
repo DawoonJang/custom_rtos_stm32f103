@@ -23,10 +23,6 @@ typedef enum _fail_value
 class LivingRTOS
 {
   private:
-    char *stack_limit;
-    char *stackPointer;
-    char stack[STACK_SIZE] __attribute__((__aligned__(8)));
-
     Queue queuePool[MAX_QUEUE];
     char queueStack[QUEUE_STACK_SIZE] __attribute__((__aligned__(8)));
 
@@ -68,7 +64,4 @@ class LivingRTOS
     int createMutex(void);
     void lockMutex(int);
     void giveMutex(int);
-
-  private:
-    char *allocateStack(int);
 };

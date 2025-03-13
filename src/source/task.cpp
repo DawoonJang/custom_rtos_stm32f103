@@ -36,13 +36,60 @@
 
 extern Task *currentTaskGlobal;
 
-TaskManager::TaskManager() : delayList(nullptr)
+TaskManager::TaskManager() : stack_limit(stack), stackPointer(stack + STACK_SIZE), delayList(nullptr)
 {
     for (size_t i = 0; i < MAX_TCB; i++)
     {
         tcbPool[i].taskID = i;
         insertTCBToFreeList(tcbPool[i].taskID);
     }
+}
+
+char *TaskManager::allocateStack(int stackSize)
+{
+    stackSize = (stackSize + 7) & ~0x7;
+
+    char *new_stack = stackPointer - stackSize;
+
+    if (new_stack < stack_limit)
+    {
+        return nullptr;
+    }
+
+    stackPointer = new_stack;
+    return stackPointer;
+}
+
+int TaskManager::createTask(void (*ptaskfunc)(void *), void *para, int prio, int stackSize)
+{
+    scopedItrLock lock;
+
+    Task *ptask = getTCBFromFreeList();
+
+    if (ptask == nullptr || stackSize < 0 || prio < 0)
+    {
+        return FAIL;
+    }
+
+    ptask->top_of_stack = (unsigned long *)allocateStack(stackSize);
+
+    if (ptask->top_of_stack == nullptr)
+    {
+        insertTCBToFreeList(ptask->taskID);
+        return FAIL;
+    }
+
+    ptask->prio = ptask->originPrio = prio;
+    ptask->state = TaskState::Ready;
+
+    ptask->top_of_stack -= 16;
+    ptask->top_of_stack[8] = (unsigned long)para;
+    ptask->top_of_stack[14] = (unsigned long)ptaskfunc;
+    ptask->top_of_stack[15] = INIT_PSR;
+
+    insertTCBToReadyList(ptask->taskID);
+
+    return ptask->taskID;
 }
 
 void TaskManager::insertTCBToDelayList(const int taskID)
@@ -176,7 +223,7 @@ Task *TaskManager::getTaskPointer(int taskID)
 
 void TaskManager::executeTaskSwitching(void)
 {
-    if (currentTaskGlobal->state == TaskState::Ready)
+    if (currentTaskGlobal && currentTaskGlobal->state == TaskState::Ready)
     {
         readyTaskPool.at(currentTaskGlobal->prio) = readyTaskPool.at(currentTaskGlobal->prio)->next;
     }
@@ -193,6 +240,8 @@ void TaskManager::executeTaskSwitching(void)
 
 void TaskManager::increaseTick(void)
 {
+    scopedItrLock lock;
+
     Task *ptask = delayList;
 
     timeTick += TICK_MS;
