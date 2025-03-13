@@ -42,7 +42,6 @@ void Task1(void *para)
     {
         if (rtos.waitForSignal(&fflag, 5000) == true)
         {
-            rtos.enQueue(signalQueueID, &cnt);
             LED_1_Toggle();
             cnt++;
         }
@@ -55,19 +54,21 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    signalQueueID = rtos.createQueue(1, sizeof(int));
-    uartQueueID = rtos.createQueue(1, sizeof(int));
+    uartQueueID = rtos.createQueue(1, sizeof(char));
     int recvSignal;
 
     for (;;)
     {
-        if (!rtos.deQueue(signalQueueID, &recvSignal, 1000))
+        if (!rtos.deQueue(uartQueueID, &recvSignal, 1000))
         {
             LED_0_Toggle();
         }
         else
         {
-            Uart_Printf("T2: %d\n", recvSignal);
+            TIM3_Out_Freq_Generation(recvSignal);
+            Uart_Printf("Received: %d\n", recvSignal);
+            systemDelay(100);
+            TIM3_Out_Stop();
         }
     }
 }

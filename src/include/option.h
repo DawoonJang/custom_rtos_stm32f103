@@ -29,5 +29,10 @@
 
 #define MAX_MUTEX (20)
 
+/* BUZZER */
+#define TIM3_FREQ (8000000)             // Hz
+#define TIM3_TICK (1000000 / TIM3_FREQ) // usec
+#define TIME3_PLS_OF_1ms (1000 / TIM3_TICK)
+
 /* Player */
 #define WAV_HEADER_SIZE 44

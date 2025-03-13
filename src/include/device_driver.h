@@ -69,6 +69,10 @@ extern "C"
 
     void systemDelay(uint32_t msec);
 
+    void TIM3_Out_Init(void);
+    void TIM3_Out_Freq_Generation(unsigned short freq);
+    void TIM3_Out_Stop(void);
+
 #ifdef __cplusplus
 }
 #endif
