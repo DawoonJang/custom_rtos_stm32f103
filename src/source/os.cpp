@@ -21,7 +21,7 @@ extern "C"
 }
 #endif
 
-LivingRTOS::LivingRTOS() : stack_limit(stack), stackPointer(stack + STACK_SIZE)
+LivingRTOS::LivingRTOS()
 {
     createTask(
         [](void *para) {
@@ -33,51 +33,9 @@ LivingRTOS::LivingRTOS() : stack_limit(stack), stackPointer(stack + STACK_SIZE)
         nullptr, PRIO_LOWEST, 128);
 }
 
-char *LivingRTOS::allocateStack(int size)
+int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int stackSize)
 {
-    size = (size + 7) & ~0x7;
-
-    char *new_stack = stackPointer - size;
-
-    if (new_stack < stack_limit)
-    {
-        return nullptr;
-    }
-
-    stackPointer = new_stack;
-    return stackPointer;
-}
-
-int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack)
-{
-    scopedItrLock lock;
-
-    Task *ptask = taskManager.getTCBFromFreeList();
-
-    if (ptask == nullptr || size_stack < 0 || prio < 0)
-    {
-        return FAIL;
-    }
-
-    ptask->top_of_stack = (unsigned long *)allocateStack(size_stack);
-
-    if (ptask->top_of_stack == nullptr)
-    {
-        taskManager.insertTCBToFreeList(ptask->taskID);
-        return FAIL;
-    }
-
-    ptask->prio = ptask->originPrio = prio;
-    ptask->state = TaskState::Ready;
-
-    ptask->top_of_stack -= 16;
-    ptask->top_of_stack[8] = (unsigned long)para;
-    ptask->top_of_stack[14] = (unsigned long)ptaskfunc;
-    ptask->top_of_stack[15] = INIT_PSR;
-
-    taskManager.insertTCBToReadyList(ptask->taskID);
-
-    return ptask->taskID;
+    return (taskManager.createTask(ptaskfunc, para, prio, stackSize));
 }
 
 void LivingRTOS::deleteTask(int taskID)

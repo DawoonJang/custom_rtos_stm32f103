@@ -62,6 +62,11 @@ struct Task
 
 class TaskManager
 {
+  private:
+    char *stack_limit;
+    char *stackPointer;
+    char stack[STACK_SIZE] __attribute__((__aligned__(8)));
+
   public:
     std::array<Task, MAX_TCB> tcbPool{};
     std::array<Task *, NUM_PRIO> readyTaskPool{};
@@ -81,8 +86,10 @@ class TaskManager
     void deleteTask(int taskID);
 
     Task *getTaskPointer(int taskID);
-
+    char *allocateStack(int size);
     void executeTaskSwitching(void);
+    int createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack);
+
     void increaseTick(void);
     void delayTask(unsigned int ticks);
 };
