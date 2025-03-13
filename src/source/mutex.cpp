@@ -2,95 +2,112 @@
 #include "../include/device_driver.h"
 #include "../include/task.h"
 
-void Mutex::lock(Task &currentTask, TaskManager &taskManager)
+extern Task *currentTaskGlobal;
+
+void Mutex::lock(TaskManager &taskManager)
 {
     scopedItrLock lock;
 
-    if (available)
+    if (isAvailable())
     {
-        changeMutexStatus(false, currentTask.taskID);
+        changeMutexStatus(false, currentTaskGlobal->taskID);
+        return;
     }
-    else
+
+    insertWaitList(currentTaskGlobal->taskID);
+
+    taskManager.setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Mutex, 0);
+    taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+
+    Task *ownerTask = taskManager.getTaskPointer(ownerTaskID);
+
+    if (ownerTask->prio > currentTaskGlobal->prio)
     {
-        waitingTaskList.push_back(&currentTask);
-
-        currentTask.state = TaskState::Blocked;
-        currentTask.blockedReason = BlockedReason::Mutex;
-        taskManager.deleteTCBFromReadyList(currentTask.taskID);
-
-        Task *ownerTask = taskManager.getTaskPointer(ownerTaskID);
-        if (ownerTask->prio > currentTask.prio)
+        if (ownerTask->state == TaskState::Ready)
         {
-            if (ownerTask->state == TaskState::Ready)
-            {
-                taskManager.deleteTCBFromReadyList(ownerTaskID);
-                ownerTask->prio = currentTask.prio;
-                taskManager.insertTCBToReadyList(ownerTaskID);
-            }
-            else
-            {
-                ownerTask->prio = currentTask.prio;
-            }
+            taskManager.deleteTCBFromReadyList(ownerTaskID);
+            ownerTask->prio = currentTaskGlobal->prio;
+            taskManager.insertTCBToReadyList(ownerTaskID);
         }
-
-        trigger_context_switch();
+        else
+        {
+            ownerTask->prio = currentTaskGlobal->prio;
+        }
     }
+
+    trigger_context_switch();
 }
 
-void Mutex::unlock(Task &currentTask, TaskManager &taskManager)
+void Mutex::unlock(TaskManager &taskManager)
 {
     scopedItrLock lock;
 
-    if (ownerTaskID != currentTask.taskID)
+    bool isContextSwitchingNeed = false;
+
+    if (ownerTaskID != currentTaskGlobal->taskID)
     {
         return;
     }
 
-    available = true;
-    ownerTaskID = -1;
+    changeMutexStatus(true, -1);
 
-    if (currentTask.prio != currentTask.originPrio)
+    if (currentTaskGlobal->prio != currentTaskGlobal->originPrio)
     {
-        taskManager.deleteTCBFromReadyList(currentTask.taskID);
-        currentTask.prio = currentTask.originPrio;
-        taskManager.insertTCBToReadyList(currentTask.taskID);
+        taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
+        currentTaskGlobal->prio = currentTaskGlobal->originPrio;
+        taskManager.insertTCBToReadyList(currentTaskGlobal->taskID);
+
+        isContextSwitchingNeed = true;
     }
 
-    Task *highestWaitingTask = getHighestPriorityWaitingTask();
+    Task *highestWaitingTask = getHighestPriorityWaitingTask(taskManager);
+
     if (highestWaitingTask)
     {
-        available = false;
-        ownerTaskID = highestWaitingTask->taskID;
+        changeMutexStatus(false, highestWaitingTask->taskID);
 
-        waitingTaskList.remove(highestWaitingTask);
+        deleteWaitList(highestWaitingTask->taskID);
         highestWaitingTask->state = TaskState::Ready;
         highestWaitingTask->blockedReason = BlockedReason::None;
 
         taskManager.insertTCBToReadyList(highestWaitingTask->taskID);
+
+        isContextSwitchingNeed = true;
+    }
+
+    if (isContextSwitchingNeed)
+    {
         trigger_context_switch();
     }
 }
 
-Task *Mutex::getHighestPriorityWaitingTask()
+Task *Mutex::getHighestPriorityWaitingTask(TaskManager &taskManager)
 {
-    Task *highestTask = nullptr;
-    int highestPriority = PRIO_LOWEST;
+    int highestPrio = PRIO_LOWEST;
+    Task *highestTaskPtr = nullptr;
+    Task *curTaskPtr;
 
-    for (Task *task : waitingTaskList)
+    for (int tIdx = 0; tIdx < MAX_TCB; tIdx++)
     {
-        if (task->prio < highestPriority)
+        if (waitTaskList[tIdx])
         {
-            highestPriority = task->prio;
-            highestTask = task;
+            curTaskPtr = taskManager.getTaskPointer(tIdx);
+            int curPrio = curTaskPtr->prio;
+
+            if (curPrio < highestPrio)
+            {
+                highestTaskPtr = curTaskPtr;
+                highestPrio = curPrio;
+            }
         }
     }
-    return highestTask;
+    return highestTaskPtr;
 }
 
-void Mutex::changeMutexStatus(bool available, int ownerTaskID)
+void Mutex::changeMutexStatus(bool avail, int ownID)
 {
-    available = available;
-    ownerTaskID = ownerTaskID;
+    available = avail;
+    ownerTaskID = ownID;
 }
 
 bool Mutex::isAvailable(void)
@@ -101,4 +118,14 @@ bool Mutex::isAvailable(void)
 int Mutex::getOwnerTaskID(void)
 {
     return ownerTaskID;
+}
+
+void Mutex::insertWaitList(const int taskID)
+{
+    waitTaskList[taskID] = true;
+}
+
+void Mutex::deleteWaitList(const int taskID)
+{
+    waitTaskList[taskID] = false;
 }

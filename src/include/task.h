@@ -1,8 +1,6 @@
 #pragma once
 
 #include "option.h"
-#include "task.h"
-#include <array>
 #include <stack>
 
 enum class TaskState
@@ -15,7 +13,8 @@ enum class BlockedReason
 {
     None = 0,
     Wait,
-    Mutex
+    Mutex,
+    Sleep
 };
 
 struct Queue
@@ -68,8 +67,9 @@ class TaskManager
     char stack[STACK_SIZE] __attribute__((__aligned__(8)));
 
   public:
-    std::array<Task, MAX_TCB> tcbPool{};
-    std::array<Task *, NUM_PRIO> readyTaskPool{};
+    Task tcbPool[MAX_TCB];
+    Task *readyTaskPool[NUM_PRIO];
+
     std::stack<Task *> freeTaskPool;
     Task *delayList;
     int timeTick;
@@ -89,9 +89,11 @@ class TaskManager
     char *allocateStack(int size);
     void executeTaskSwitching(void);
     int createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack);
+    void setTaskBlockedStatus(const int taskID, BlockedReason whyBlocked, const int timeout);
+    void setTaskReadyFromDelay(const int taskID);
 
     void increaseTick(void);
-    void delayTask(unsigned int ticks);
+    void delayTask(const unsigned int ticks);
 };
 
 void ReceiveAndPlayTask(void *para);

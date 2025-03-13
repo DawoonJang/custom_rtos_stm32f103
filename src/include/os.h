@@ -28,10 +28,9 @@ class LivingRTOS
 
     Mutex mutexPool[MAX_MUTEX];
 
-    TaskManager taskManager;
-
   public:
     LivingRTOS();
+    TaskManager taskManager;
 
     void executeTaskSwitching(void);
 
@@ -59,9 +58,9 @@ class LivingRTOS
 
     char *allocateQueueMemory(int size_arr);
 
-    void sendSignal(int, int);
+    void sendSignal(const int, const int);
 
     int createMutex(void);
     void lockMutex(int);
-    void giveMutex(int);
+    void unlockMutex(int);
 };

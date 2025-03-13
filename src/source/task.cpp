@@ -1,3 +1,4 @@
+#include "../include/task.h"
 #include "../include/device_driver.h"
 
 // void ReceiveAndPlayTask(void *para)
@@ -157,13 +158,9 @@ void TaskManager::insertTCBToReadyList(const int taskID)
     int prio = ptask->prio;
     Task *&head = readyTaskPool[prio];
 
-    if (!ptask)
-        return;
-
     if (!head)
     {
         head = ptask;
-
         ptask->next = ptask;
         ptask->prev = ptask;
     }
@@ -180,9 +177,6 @@ void TaskManager::insertTCBToReadyList(const int taskID)
 void TaskManager::deleteTCBFromReadyList(const int taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
-
-    if (!ptask)
-        return;
 
     int prio = ptask->prio;
     Task *&head = readyTaskPool[prio];
@@ -225,12 +219,12 @@ void TaskManager::executeTaskSwitching(void)
 {
     if (currentTaskGlobal && currentTaskGlobal->state == TaskState::Ready)
     {
-        readyTaskPool.at(currentTaskGlobal->prio) = readyTaskPool.at(currentTaskGlobal->prio)->next;
+        readyTaskPool[currentTaskGlobal->prio] = currentTaskGlobal->next;
     }
 
     for (size_t prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio++)
     {
-        if (readyTaskPool.at(prio) != nullptr)
+        if (readyTaskPool[prio])
         {
             currentTaskGlobal = readyTaskPool[prio];
             return;
@@ -262,15 +256,38 @@ void TaskManager::increaseTick(void)
     }
 }
 
-void TaskManager::delayTask(unsigned int ticks)
+void TaskManager::setTaskBlockedStatus(const int taskID, const BlockedReason whyBlocked, const int timeout)
+{
+    tcbPool[taskID].state = TaskState::Blocked;
+    tcbPool[taskID].blockedReason = whyBlocked;
+    tcbPool[taskID].currentTick = timeTick + timeout;
+
+    switch (tcbPool[taskID].blockedReason)
+    {
+    case BlockedReason::Wait:
+    case BlockedReason::Sleep:
+        deleteTCBFromReadyList(currentTaskGlobal->taskID);
+        insertTCBToDelayList(currentTaskGlobal->taskID);
+        break;
+
+    default:
+        break;
+    }
+}
+
+void TaskManager::setTaskReadyFromDelay(const int taskID)
+{
+    tcbPool[taskID].state = TaskState::Ready;
+    tcbPool[taskID].blockedReason = BlockedReason::None;
+    deleteTCBFromDelayList(taskID);
+    insertTCBToReadyList(taskID);
+}
+
+void TaskManager::delayTask(const unsigned int ticks)
 {
     scopedItrLock lock;
 
-    currentTaskGlobal->state = TaskState::Blocked;
-    currentTaskGlobal->currentTick = timeTick + ticks;
-
-    deleteTCBFromReadyList(currentTaskGlobal->taskID);
-    insertTCBToDelayList(currentTaskGlobal->taskID);
+    setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Sleep, ticks);
 
     trigger_context_switch();
 }

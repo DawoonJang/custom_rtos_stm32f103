@@ -140,13 +140,16 @@ extern "C"
 
     volatile int Uart1_Rx_In = 0;
     extern volatile int uartQueueID;
+    char Uart1_Rx_Data;
     void USART1_IRQHandler(void)
     {
         systemDelay(10);
 
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
-        char Uart1_Rx_Data = Uart1_Get_Char();
+        Uart1_Rx_Data = Uart1_Get_Pressed();
+
+        Uart_Printf("UART: %d\n", Uart1_Rx_Data);
         rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }
 

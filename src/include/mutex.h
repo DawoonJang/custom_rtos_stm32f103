@@ -3,15 +3,27 @@
 #include "task.h"
 #include <list>
 
+struct Tnode
+{
+    int taskID;
+
+    Tnode *prev;
+    Tnode *next;
+};
+
 class Mutex
 {
   public:
     Mutex() : available(true), ownerTaskID(-1)
     {
+        // for (int i = 0; i < MAX_TCB; i++)
+        // {
+        //     waitTaskList[i].taskID = i;
+        // }
     }
 
-    void lock(Task &currentTask, TaskManager &taskManager);
-    void unlock(Task &currentTask, TaskManager &taskManager);
+    void lock(TaskManager &taskManager);
+    void unlock(TaskManager &taskManager);
 
     void changeMutexStatus(bool available, int ownerTaskID);
     int getOwnerTaskID(void);
@@ -21,7 +33,10 @@ class Mutex
     bool available;
     int ownerTaskID;
 
-    std::list<Task *> waitingTaskList;
+    bool waitTaskList[MAX_TCB];
 
-    Task *getHighestPriorityWaitingTask(void);
+    void insertWaitList(int taskID);
+    void deleteWaitList(int taskID);
+
+    Task *getHighestPriorityWaitingTask(TaskManager &taskManager);
 };

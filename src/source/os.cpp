@@ -1,6 +1,5 @@
 #include "../include/os.h"
 #include "../include/device_driver.h"
-#include <algorithm>
 
 #include <string.h>
 
@@ -85,22 +84,15 @@ bool LivingRTOS::waitForSignal(int *pdata, int timeout)
 {
     scopedItrLock lock;
 
-    currentTaskGlobal->state = TaskState::Blocked;
-    currentTaskGlobal->currentTick = taskManager.timeTick + timeout;
-
-    currentTaskGlobal->blockedReason = BlockedReason::Wait;
-    currentTaskGlobal->recvSignal = 0;
-
-    taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
-    taskManager.insertTCBToDelayList(currentTaskGlobal->taskID);
-
+    taskManager.setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Wait, timeout);
     trigger_context_switch();
+    enable_interrupts();
 
-    BlockedReason initialState = currentTaskGlobal->blockedReason;
+    BlockedReason stateBackup = currentTaskGlobal->blockedReason;
     currentTaskGlobal->blockedReason = BlockedReason::None;
     *pdata = currentTaskGlobal->recvSignal;
 
-    return (initialState == currentTaskGlobal->blockedReason);
+    return (stateBackup == BlockedReason::None);
 }
 
 void LivingRTOS::enQueue(int queueID, void *pdata)
@@ -114,7 +106,6 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
 
     if (isQueueFull(queueID))
     {
-
         return;
     }
 
@@ -126,12 +117,7 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
 
     if (receiverTask->blockedReason == BlockedReason::Wait)
     {
-        receiverTask->state = TaskState::Ready;
-        receiverTask->blockedReason = BlockedReason::None;
-
-        taskManager.deleteTCBFromDelayList(receiverTaskID);
-        taskManager.insertTCBToReadyList(receiverTaskID);
-
+        taskManager.setTaskReadyFromDelay(receiverTaskID);
         trigger_context_switch();
     }
 }
@@ -249,18 +235,13 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     if (!isQueueEmpty(queueID))
     {
         memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
-
         moveFrontPointerOfQueue(queueID);
         return true;
     }
 
-    currentTaskGlobal->state = TaskState::Blocked;
-    currentTaskGlobal->currentTick = taskManager.timeTick + timeout;
-    currentTaskGlobal->blockedReason = BlockedReason::Wait;
+    taskManager.setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Wait, timeout);
 
-    taskManager.deleteTCBFromReadyList(currentTaskGlobal->taskID);
-    taskManager.insertTCBToDelayList(currentTaskGlobal->taskID);
-
+    enable_interrupts();
     trigger_context_switch();
 
     if (currentTaskGlobal->blockedReason != BlockedReason::None)
@@ -270,12 +251,11 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     }
 
     memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
-
     moveFrontPointerOfQueue(queueID);
     return true;
 }
 
-void LivingRTOS::sendSignal(int destTaskID, int signal)
+void LivingRTOS::sendSignal(const int destTaskID, const int signal)
 {
     scopedItrLock lock;
 
@@ -283,12 +263,8 @@ void LivingRTOS::sendSignal(int destTaskID, int signal)
 
     if (destTask->state == TaskState::Blocked && destTask->blockedReason == BlockedReason::Wait)
     {
-        destTask->state = TaskState::Ready;
-        destTask->blockedReason = BlockedReason::None;
         destTask->recvSignal = signal;
-
-        taskManager.deleteTCBFromDelayList(destTaskID);
-        taskManager.insertTCBToReadyList(destTaskID);
+        taskManager.setTaskReadyFromDelay(destTaskID);
 
         trigger_context_switch();
     }
@@ -316,10 +292,10 @@ int LivingRTOS::createMutex(void)
 
 void LivingRTOS::lockMutex(int mutexID)
 {
-    mutexPool[mutexID].lock(*currentTaskGlobal, taskManager);
+    mutexPool[mutexID].lock(taskManager);
 }
 
-void LivingRTOS::giveMutex(int mutexID)
+void LivingRTOS::unlockMutex(int mutexID)
 {
-    mutexPool[mutexID].unlock(*currentTaskGlobal, taskManager);
+    mutexPool[mutexID].unlock(taskManager);
 }

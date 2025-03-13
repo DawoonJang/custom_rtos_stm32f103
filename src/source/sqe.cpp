@@ -5,9 +5,9 @@ extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile int keyWaitTaskID;
 
-extern volatile int signalQueueID;
-extern volatile int uartQueueID;
-extern volatile int mutexID;
+volatile int signalQueueID;
+volatile int uartQueueID;
+volatile int mutexID;
 
 #ifdef TESTCASE1
 
@@ -36,7 +36,7 @@ void Task2(void *para)
 void Task1(void *para)
 {
     int fflag;
-    static int cnt;
+    static char cnt;
 
     for (;;)
     {
@@ -44,6 +44,7 @@ void Task1(void *para)
         {
             LED_1_Toggle();
             cnt++;
+            Uart_Printf("%d Button_Pressed\n", cnt);
         }
         else
         {
@@ -54,8 +55,9 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    uartQueueID = rtos.createQueue(1, sizeof(char));
-    int recvSignal;
+    uartQueueID = rtos.createQueue(4, sizeof(char));
+    signalQueueID = rtos.createQueue(1, sizeof(char));
+    char recvSignal;
 
     for (;;)
     {
@@ -66,7 +68,7 @@ void Task2(void *para)
         else
         {
             TIM3_Out_Freq_Generation(recvSignal);
-            Uart_Printf("Received: %d\n", recvSignal);
+            // Uart_Printf("Received: %d\n", recvSignal);
             systemDelay(100);
             TIM3_Out_Stop();
         }
@@ -80,7 +82,7 @@ void Task1(void *para)
     volatile int j;
     rtos.delay(500);
 
-    Uart_Printf("\nTask1 : Semaphore Take!\n");
+    Uart_Printf("\nTask1 Lock\n");
 
     rtos.lockMutex(mutexID);
 
@@ -91,9 +93,9 @@ void Task1(void *para)
         LED_1_Toggle();
     }
 
-    rtos.giveMutex(mutexID);
+    Uart_Printf("\nTask1 unLock\n");
+    rtos.unlockMutex(mutexID);
 
-    Uart_Printf("Task1 : Semaphore Give!\n");
     for (;;)
     {
         rtos.delay(500);
@@ -102,7 +104,7 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    rtos.delay(7000);
+    rtos.delay(1000);
     Uart_Printf("\nTask2 : Run!\n");
 
     for (;;)
@@ -118,24 +120,25 @@ void Task3(void *para)
     volatile int j;
     mutexID = rtos.createMutex();
 
-    Uart_Printf("\nTask3 : Semaphore Take!\n");
+    Uart_Printf("\nTask3 Lock\n");
 
     rtos.lockMutex(mutexID);
 
     for (j = 0; j < 10; j++)
     {
+
         systemDelay(250);
 
         LED_0_Toggle();
     }
 
-    rtos.giveMutex(mutexID);
-    Uart_Printf("Task3 : Semaphore Give!\n");
+    Uart_Printf("\nTask3 unLock\n");
+    rtos.unlockMutex(mutexID);
 
     for (;;)
     {
         rtos.delay(1000);
-        Uart_Printf("Task3: Still Running\n");
+        Uart_Printf("3\n");
     }
 }
 

@@ -67,7 +67,9 @@
         "stack": "cpp",
         "__hash_table": "cpp",
         "__split_buffer": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "__node_handle": "cpp",
+        "__config": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }
