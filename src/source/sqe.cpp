@@ -55,9 +55,9 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    uartQueueID = rtos.createQueue(4, sizeof(char));
-    signalQueueID = rtos.createQueue(1, sizeof(char));
-    char recvSignal;
+    uartQueueID = rtos.createQueue(2048, sizeof(short));
+    signalQueueID = rtos.createQueue(1, sizeof(short));
+    unsigned short recvSignal;
 
     for (;;)
     {
@@ -69,7 +69,7 @@ void Task2(void *para)
         {
             TIM3_Out_Freq_Generation(recvSignal);
             // Uart_Printf("Received: %d\n", recvSignal);
-            systemDelay(100);
+            systemDelay(10);
             TIM3_Out_Stop();
         }
     }
@@ -154,7 +154,7 @@ void developmentVerify(void)
 #elif defined(TESTCASE2)
 
     keyWaitTaskID = rtos.createTask(Task1, nullptr, 1, 1024);
-    rtos.createTask(Task2, nullptr, 2, 1024); // Equal Prio is not working
+    rtos.createTask(Task2, nullptr, 2, 2048);
 
 #elif defined(TESTCASE3)
 

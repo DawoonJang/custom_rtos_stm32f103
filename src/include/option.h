@@ -25,7 +25,7 @@
 #define TICK_MS (5)
 
 #define MAX_QUEUE (5)
-#define QUEUE_STACK_SIZE (1024)
+#define QUEUE_STACK_SIZE (4 * 1024)
 
 #define MAX_MUTEX (20)
 

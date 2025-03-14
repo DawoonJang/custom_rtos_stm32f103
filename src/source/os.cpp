@@ -16,6 +16,11 @@ extern "C"
         rtos.executeTaskSwitching();
     }
 
+    void enQueueGlobal(int queueID, void *pdata)
+    {
+        rtos.enQueue(queueID, pdata);
+    }
+
 #ifdef __cplusplus
 }
 #endif

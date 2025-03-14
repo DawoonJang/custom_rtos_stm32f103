@@ -143,14 +143,18 @@ extern "C"
     char Uart1_Rx_Data;
     void USART1_IRQHandler(void)
     {
+        // register uint32_t saved_r0 asm("r0");
+        // asm volatile("push {r0}");
+
         systemDelay(10);
 
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
 
-        Uart_Printf("UART: %d\n", Uart1_Rx_Data);
-        rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
+        // rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
+        enQueueGlobal(uartQueueID, &Uart1_Rx_Data);
+        // asm volatile("pop {r0}"); // r0 복원
     }
 
 #ifdef __cplusplus
