@@ -68,8 +68,8 @@ void Task2(void *para)
         else
         {
             TIM3_Out_Freq_Generation(recvSignal);
-            // Uart_Printf("Received: %d\n", recvSignal);
-            systemDelay(10);
+            Uart_Printf("Received: %d\n", recvSignal);
+            systemDelay(100);
             TIM3_Out_Stop();
         }
     }
