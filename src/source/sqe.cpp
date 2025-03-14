@@ -55,7 +55,7 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    uartQueueID = rtos.createQueue(2048, sizeof(short));
+    uartQueueID = rtos.createQueue(4, sizeof(short));
     signalQueueID = rtos.createQueue(1, sizeof(short));
     unsigned short recvSignal;
 

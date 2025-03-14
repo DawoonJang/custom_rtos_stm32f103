@@ -16,11 +16,6 @@ extern "C"
         rtos.executeTaskSwitching();
     }
 
-    void enQueueGlobal(int queueID, void *pdata)
-    {
-        rtos.enQueue(queueID, pdata);
-    }
-
 #ifdef __cplusplus
 }
 #endif
@@ -225,15 +220,20 @@ int LivingRTOS::createQueue(int capacity, int elementSize)
 
 bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
 {
-    scopedItrLock lock;
+
+    disable_interrupts();
 
     if (queuePool[queueID].buffer == nullptr)
     {
+        enable_interrupts();
+
         return false;
     }
 
     if (queuePool[queueID].receiverTaskID != currentTaskGlobal->taskID)
     {
+        enable_interrupts();
+
         return false;
     }
 
@@ -255,11 +255,15 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     if (currentTaskGlobal->blockedReason != BlockedReason::None)
     {
         currentTaskGlobal->blockedReason = BlockedReason::None;
+
+        enable_interrupts();
         return false;
     }
 
     memcpy(data, queuePool[queueID].front, queuePool[queueID].elementSize);
     moveFrontPointerOfQueue(queueID);
+
+    enable_interrupts();
     return true;
 }
 

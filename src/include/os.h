@@ -10,7 +10,6 @@ extern "C"
 #endif
 
     void switchingTask(void);
-    void enQueueGlobal(int queueID, void *pdata);
 
 #ifdef __cplusplus
 }

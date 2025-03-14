@@ -143,8 +143,7 @@ extern "C"
     char Uart1_Rx_Data;
     void USART1_IRQHandler(void)
     {
-        // register uint32_t saved_r0 asm("r0");
-        // asm volatile("push {r0}");
+        scopedItrLock lock;
 
         systemDelay(10);
 
@@ -152,9 +151,7 @@ extern "C"
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
 
-        // rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
-        enQueueGlobal(uartQueueID, &Uart1_Rx_Data);
-        // asm volatile("pop {r0}"); // r0 복원
+        rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }
 
 #ifdef __cplusplus
