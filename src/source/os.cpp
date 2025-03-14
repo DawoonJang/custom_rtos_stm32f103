@@ -242,7 +242,10 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     taskManager.setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Wait, timeout);
 
     enable_interrupts();
+
     trigger_context_switch();
+
+    disable_interrupts();
 
     if (currentTaskGlobal->blockedReason != BlockedReason::None)
     {
