@@ -128,8 +128,6 @@ extern "C"
 
     void EXTI9_5_IRQHandler(void)
     {
-        systemDelay(10);
-
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
 
         EXTI->PR = 0x3 << 6;
@@ -144,8 +142,6 @@ extern "C"
     void USART1_IRQHandler(void)
     {
         scopedItrLock lock;
-
-        systemDelay(10);
 
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;

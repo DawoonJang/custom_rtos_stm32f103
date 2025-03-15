@@ -9,7 +9,9 @@ set(CMSIS_DSP_PATH ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP)
 include(cmake/os.cmake)
 include(cmake/cmsis.cmake)
 include(cmake/arm-none-eabi.cmake)
+
 include_directories(${CMSIS_DSP_PATH}/Include)
+include_directories(${CMAKE_SOURCE_DIR}/src/include)
 
 project(firmware C CXX ASM)
 
@@ -46,7 +48,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/STM32F103C8TX_FLASH.ld ${LIBR
 # add_subdirectory(${CMSIS_DSP_PATH}/Source)
 
 # 소스 파일들 추가
-file(GLOB SOURCE_FILES CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/source/*.c" "src/source/*.cpp" "*.s")
+file(GLOB SOURCE_FILES CONFIGURE_DEPENDS  "src/*.cpp" "src/**/*.c" "src/**/*.cpp" "*.s")
 
 # Assuming the library is located in the `Drivers/CMSIS/DSP/Source` folder or a subdirectory
 
