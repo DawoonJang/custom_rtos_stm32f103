@@ -55,15 +55,13 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    uartQueueID = rtos.createQueue(4, sizeof(char));
-    signalQueueID = rtos.createQueue(1, sizeof(char));
-    unsigned short recvByte;
+    uartQueueID = rtos.createQueue(4, sizeof(short));
+    signalQueueID = rtos.createQueue(1, sizeof(short));
     unsigned short recvSignal;
-    int shortFlag = 0;
-    
+
     for (;;)
     {
-        if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
+        if (!rtos.deQueue(uartQueueID, &recvSignal, 1000))
         {
             LED_0_Toggle();
         }
