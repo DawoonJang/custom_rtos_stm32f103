@@ -69,19 +69,10 @@ void Task2(void *para)
         }
         else
         {
-            if(!shortFlag)
-            {
-                recvSignal = (unsigned char)recvByte;
-            }
-            else
-            {
-                recvSignal |= ((unsigned char)recvByte << 8);
-                // TIM3_Out_Freq_Generation(recvSignal);
-                Uart_Printf("Received: %d\n", recvSignal);
-                // TIM3_Out_Stop();            
-            }
-            systemDelay(50);
-            shortFlag ^= 1;
+            TIM3_Out_Freq_Generation(recvSignal);
+            // Uart_Printf("Received: %d\n", recvSignal);
+            systemDelay(10);
+            TIM3_Out_Stop();
         }
     }
 }
