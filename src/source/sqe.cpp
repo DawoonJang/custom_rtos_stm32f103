@@ -39,7 +39,7 @@ void Task2(void *para)
     unsigned short recvByte;
     unsigned short recvSignal;
     int shortFlag = 0;
-    
+
     for (;;)
     {
         if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
@@ -48,7 +48,7 @@ void Task2(void *para)
         }
         else
         {
-            if(!shortFlag)
+            if (!shortFlag)
             {
                 recvSignal = (unsigned char)recvByte;
             }
@@ -57,7 +57,7 @@ void Task2(void *para)
                 recvSignal |= ((unsigned char)recvByte << 8);
                 // TIM3_Out_Freq_Generation(recvSignal);
                 Uart_Printf("Received: %d\n", recvSignal);
-                // TIM3_Out_Stop();            
+                // TIM3_Out_Stop();
             }
             systemDelay(50);
             shortFlag ^= 1;
@@ -66,7 +66,7 @@ void Task2(void *para)
 }
 
 #define FFT_LENGTH 64
-#define SAMPLE_RATE 32
+#define SAMPLE_RATE 512
 #define SIGNAL_FREQ 16
 
 #define PI 3.14159265358979f
@@ -217,37 +217,25 @@ void Task3(void *para)
     double pDst_real[FFT_LENGTH];
     double pDst_imag[FFT_LENGTH];
 
-    for (long i = 0; i < FFT_LENGTH; ++i)
+    int magnitude[FFT_LENGTH / 2];
+    int freqs[FFT_LENGTH / 2];
+
+    for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
         pDst_real[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE);
     }
 
-    // double pDst_real[8] = {0., 0., 0., 0., 1., 1., 1., 1.};
     while (1)
     {
-        Uart_Printf("B: ");
-        // Uart1_PrintStr(pDst_real, FFT_LENGTH);
-
         FFT(FFT_LENGTH, pDst_real, pDst_imag);
-        // arm_rfft_q15(&S, pSrc, pDst_real);
 
-        // FFT(pSrc, pDst_real, pDst_imag, FFT_LENGTH);
-
-        // Uart_Printf("A: ");
-        // Uart1_Buffer(pDst_real, FFT_LENGTH);
-
-        // // Uart1_PrintComplex(pDst_real, pDst_imag, FFT_LENGTH);
-        // Uart_Printf("A: ");
-
-        // Uart1_PrintStr(pDst_real, pDst_imag, 8);
-        // // Uart1_PrintStr(pDst_real + (FFT_LENGTH - 8) - 1, pDst_imag + (FFT_LENGTH - 8) - 1, 8);
-
-        double magnitude[FFT_LENGTH];
-
-        for (size_t i = 0; i < FFT_LENGTH; i++)
+        for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
+            freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
             magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
+            Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
+        Uart_Printf("\n");
 
         rtos.delay(2000);
     }
@@ -324,12 +312,7 @@ void Task3(void *para)
 
 void developmentVerify(void)
 {
-#ifdef TESTCASE1
-
-    rtos.createTask(Task1, nullptr, 1, 1024);
-    rtos.createTask(Task2, nullptr, 2, 1024);
-
-#elif defined(TESTCASE2)
+#ifdef TESTCASE2
 
     // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 1024);
     // rtos.createTask(Task2, nullptr, 3, 1024);
