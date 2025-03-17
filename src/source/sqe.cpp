@@ -147,14 +147,20 @@ void Uart1_PrintStr(double *real, double *imag, size_t length)
     }
     Uart1_Printf("\n");
 }
-
-int FFT(long N, double *XR, double *XI)
+int FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
 {
     /* 1. check 2^n count -> if else then return -1 */
     if ((N != 0) && ((N & (N - 1)) != 0))
         return -1;
 
-    /* 2. calculate W */
+    /* 2. initialize destination arrays */
+    for (long i = 0; i < N; ++i)
+    {
+        pDstReal[i] = pSrc[i];
+        pDstImag[i] = 0.0;
+    }
+
+    /* 3. calculate W */
     long N2 = N >> 1;
     double WR[N2], WI[N2]; /* Real and Imaginary part */
     double T = 2 * PI / N;
@@ -164,7 +170,7 @@ int FFT(long N, double *XR, double *XI)
         WI[i] = -sin(T * i);
     }
 
-    /* 3. shuffle input array index to calculate bottom-up style FFT */
+    /* 4. shuffle input array index to calculate bottom-up style FFT */
     int log2N = (int)log2(N);
     double tmp;
     for (long n = 1; n < N - 1; ++n)
@@ -176,13 +182,13 @@ int FFT(long N, double *XR, double *XI)
         }
         if (n < m)
         { /* exchange */
-            tmp = XR[n];
-            XR[n] = XR[m];
-            XR[m] = tmp;
+            tmp = pDstReal[n];
+            pDstReal[n] = pDstReal[m];
+            pDstReal[m] = tmp;
         }
     }
 
-    /* 4. execute fft */
+    /* 5. execute fft */
     for (int loop = 0; loop < log2N; ++loop)
     {
         long regionSize = 1 << (loop + 1);    /* if N=8: 2 -> 4 -> 8 */
@@ -195,14 +201,14 @@ int FFT(long N, double *XR, double *XI)
             double TR, TI;
             for (register long j = i; j <= blockEnd; ++j)
             { /* j start from i */
-                TR = WR[k] * XR[j + half] - WI[k] * XI[j + half];
-                TI = WI[k] * XR[j + half] + WR[k] * XI[j + half];
+                TR = WR[k] * pDstReal[j + half] - WI[k] * pDstImag[j + half];
+                TI = WI[k] * pDstReal[j + half] + WR[k] * pDstImag[j + half];
 
-                XR[j + half] = XR[j] - TR;
-                XI[j + half] = XI[j] - TI;
+                pDstReal[j + half] = pDstReal[j] - TR;
+                pDstImag[j + half] = pDstImag[j] - TI;
 
-                XR[j] = XR[j] + TR;
-                XI[j] = XI[j] + TI;
+                pDstReal[j] = pDstReal[j] + TR;
+                pDstImag[j] = pDstImag[j] + TI;
 
                 k += kJump;
             }
@@ -213,7 +219,8 @@ int FFT(long N, double *XR, double *XI)
 
 void Task3(void *para)
 {
-    // double pSrc[FFT_LENGTH];
+    double pSrc[FFT_LENGTH];
+
     double pDst_real[FFT_LENGTH];
     double pDst_imag[FFT_LENGTH];
 
@@ -222,12 +229,12 @@ void Task3(void *para)
 
     for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
-        pDst_real[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE);
+        pSrc[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE);
     }
 
     while (1)
     {
-        FFT(FFT_LENGTH, pDst_real, pDst_imag);
+        FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
 
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
