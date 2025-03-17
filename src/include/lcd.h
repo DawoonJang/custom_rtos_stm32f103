@@ -1,4 +1,5 @@
 #pragma once
+#include "dsp.h"
 
 #define BLACK 0x0000
 #define WHITE 0xffff
@@ -42,6 +43,7 @@ extern "C"
     void Lcd_Draw_Bar_Graph(const int row[], const int data[], unsigned short data_size);
     void Lcd_Draw_Char(unsigned short x, unsigned short y, char c, unsigned short color);
     void Lcd_Draw_Bar(unsigned short x, unsigned short y, unsigned short height, unsigned short color);
+    void Lcd_Draw_Font(FilterOption filterOptions);
 
 #ifdef __cplusplus
 }

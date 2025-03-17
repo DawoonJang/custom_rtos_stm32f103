@@ -5,12 +5,10 @@
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
+extern volatile bool keyInputFlag;
 volatile int keyWaitTaskID;
 
-volatile int signalQueueID;
-volatile int uartQueueID;
 volatile int mutexID;
-volatile FilterOption filterOptions;
 
 #ifdef TESTCASE2
 
@@ -63,6 +61,8 @@ void draw_line(short *fftData, short maxMagnitude)
 void canvasGKTask(void *para)
 {
     Boxes obj;
+    keyInputFlag = 1;
+
     init_templateBoxes();
     queueBoxes = rtos.createQueue(2 * FFT_LENGTH, sizeof(Boxes));
     while (1)
@@ -70,6 +70,12 @@ void canvasGKTask(void *para)
         if (rtos.deQueue(queueBoxes, &obj, 100))
         {
             Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
+        }
+
+        if (keyInputFlag)
+        {
+            keyInputFlag = 0;
+            Lcd_Draw_Font(dsp.filterOption);
         }
     }
 }
@@ -94,38 +100,38 @@ void canvasGKTask(void *para)
 //     }
 // }
 
-void Task2(void *para)
-{
-    uartQueueID = rtos.createQueue(4, sizeof(char));
-    signalQueueID = rtos.createQueue(1, sizeof(char));
-    unsigned short recvByte;
-    unsigned short recvSignal;
-    int shortFlag = 0;
+// void Task2(void *para)
+// {
+//     uartQueueID = rtos.createQueue(4, sizeof(char));
+//     signalQueueID = rtos.createQueue(1, sizeof(char));
+//     unsigned short recvByte;
+//     unsigned short recvSignal;
+//     int shortFlag = 0;
 
-    for (;;)
-    {
-        if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
-        {
-            LED_0_Toggle();
-        }
-        else
-        {
-            if (!shortFlag)
-            {
-                recvSignal = (unsigned char)recvByte;
-            }
-            else
-            {
-                recvSignal |= ((unsigned char)recvByte << 8);
-                // TIM3_Out_Freq_Generation(recvSignal);
-                // Uart_Printf("Received: %d\n", recvSignal);
-                // TIM3_Out_Stop();
-            }
-            systemDelay(50);
-            shortFlag ^= 1;
-        }
-    }
-}
+//     for (;;)
+//     {
+//         if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
+//         {
+//             LED_0_Toggle();
+//         }
+//         else
+//         {
+//             if (!shortFlag)
+//             {
+//                 recvSignal = (unsigned char)recvByte;
+//             }
+//             else
+//             {
+//                 recvSignal |= ((unsigned char)recvByte << 8);
+//                 // TIM3_Out_Freq_Generation(recvSignal);
+//                 // Uart_Printf("Received: %d\n", recvSignal);
+//                 // TIM3_Out_Stop();
+//             }
+//             systemDelay(50);
+//             shortFlag ^= 1;
+//         }
+//     }
+// }
 
 float pSrc[FFT_LENGTH];
 float pSrcTemp[FFT_LENGTH];

@@ -125,21 +125,21 @@ extern "C"
 
     volatile int keyValue;
     extern volatile int keyWaitTaskID;
-    extern volatile FilterOption filterOptions;
+    volatile bool keyInputFlag;
+
     void EXTI9_5_IRQHandler(void)
     {
         scopedItrLock lock;
-
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
 
+        keyInputFlag = 1;
         dsp.changeFilterOption();
         // rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;
-    extern volatile int uartQueueID;
     char Uart1_Rx_Data;
     void USART1_IRQHandler(void)
     {

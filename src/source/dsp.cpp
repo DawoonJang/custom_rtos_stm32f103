@@ -2,8 +2,8 @@
 
 DSP dsp;
 
-static double WR[FFT_LENGTH >> 1];
-static double WI[FFT_LENGTH >> 1];
+static float WR[FFT_LENGTH >> 1];
+static float WI[FFT_LENGTH >> 1];
 
 DSP::DSP()
 {
@@ -13,7 +13,7 @@ DSP::DSP()
 void DSP::precomputeTwiddleFactors(long N)
 {
     long N2 = N >> 1;
-    double T = 2 * PI / N;
+    float T = 2 * PI / N;
 
     for (long i = 0; i < N2; ++i)
     {
@@ -65,8 +65,8 @@ int DSP::FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, co
             size_t k = 0;
             for (size_t j = i; j <= blockEnd; ++j)
             { /* j start from i */
-                double TR = WR[k] * pDstReal[j + half] - WI[k] * pDstImag[j + half];
-                double TI = WI[k] * pDstReal[j + half] + WR[k] * pDstImag[j + half];
+                float TR = WR[k] * pDstReal[j + half] - WI[k] * pDstImag[j + half];
+                float TI = WI[k] * pDstReal[j + half] + WR[k] * pDstImag[j + half];
 
                 pDstReal[j + half] = pDstReal[j] - TR;
                 pDstImag[j + half] = pDstImag[j] - TI;
