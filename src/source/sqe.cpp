@@ -10,6 +10,16 @@ volatile int keyWaitTaskID;
 
 volatile int mutexID;
 
+float pSrc[FFT_LENGTH];
+float pSrcTemp[FFT_LENGTH];
+float pSrcFiltered[FFT_LENGTH];
+
+float pDst_real[FFT_LENGTH];
+float pDst_imag[FFT_LENGTH];
+
+short magnitude[FFT_HALF_LENGTH];
+int freqs[FFT_HALF_LENGTH];
+
 #ifdef TESTCASE2
 
 struct Boxes
@@ -43,7 +53,7 @@ void init_templateBoxes()
         }
         else
         {
-            templateBoxes[i].color = YELLOW;
+            templateBoxes[i].color = VIOLET;
         }
     }
 }
@@ -95,79 +105,31 @@ void canvasGKTask(void *para)
     }
 }
 
-// void Task1(void *para)
-// {
-//     int fflag;
-//     static char cnt;
+void signalTask(void *para)
+{
+    while (1)
+    {
+        rtos.lockMutex(mutexID);
 
-//     for (;;)
-//     {
-//         if (rtos.waitForSignal(&fflag, 5000) == true)
-//         {
-//             LED_1_Toggle();
-//             cnt++;
-//             Uart_Printf("%d Button_Pressed\n", cnt);
-//         }
-//         else
-//         {
-//             ;
-//         }
-//     }
-// }
+        for (size_t i = 0; i < FFT_LENGTH; ++i)
+        {
+            pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
+                      0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
+                      2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
+                      sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
+        }
 
-// void Task2(void *para)
-// {
-//     uartQueueID = rtos.createQueue(4, sizeof(char));
-//     signalQueueID = rtos.createQueue(1, sizeof(char));
-//     unsigned short recvByte;
-//     unsigned short recvSignal;
-//     int shortFlag = 0;
+        rtos.delay(500);
 
-//     for (;;)
-//     {
-//         if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
-//         {
-//             LED_0_Toggle();
-//         }
-//         else
-//         {
-//             if (!shortFlag)
-//             {
-//                 recvSignal = (unsigned char)recvByte;
-//             }
-//             else
-//             {
-//                 recvSignal |= ((unsigned char)recvByte << 8);
-//                 // TIM3_Out_Freq_Generation(recvSignal);
-//                 // Uart_Printf("Received: %d\n", recvSignal);
-//                 // TIM3_Out_Stop();
-//             }
-//             systemDelay(50);
-//             shortFlag ^= 1;
-//         }
-//     }
-// }
-
-float pSrc[FFT_LENGTH];
-float pSrcTemp[FFT_LENGTH];
-float pSrcFiltered[FFT_LENGTH];
-
-float pDst_real[FFT_LENGTH];
-float pDst_imag[FFT_LENGTH];
-
-short magnitude[FFT_LENGTH / 2];
-int freqs[FFT_LENGTH / 2];
-short maxMagnitude;
+        rtos.unlockMutex(mutexID);
+    }
+}
 
 void dspTask(void *para)
 {
+    short maxMagnitude;
 
-    for (size_t i = 0; i < FFT_LENGTH; ++i)
-    {
-        pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) + sin((2 * PI * 64 * i) / SAMPLE_RATE) +
-                  2 * sin((2 * PI * 200 * i) / SAMPLE_RATE) + sin((2 * PI * SIGNAL_FREQ * 3 * i) / SAMPLE_RATE) +
-                  1.5 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE);
-    }
+    rtos.delay(10);
 
     while (1)
     {
@@ -190,8 +152,8 @@ void dspTask(void *para)
             break;
 
         case FilterOption::BPF:
-            dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_20);
-            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_100);
+            dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_200);
+            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_30);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
@@ -201,7 +163,8 @@ void dspTask(void *para)
 
         rtos.unlockMutex(mutexID);
 
-        maxMagnitude = 1;
+        maxMagnitude = 0;
+
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
@@ -293,7 +256,7 @@ void developmentVerify(void)
 {
 #ifdef TESTCASE2
 
-    // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2048);
+    rtos.createTask(signalTask, nullptr, 3, 2048);
     rtos.createTask(canvasGKTask, nullptr, 2, 2048);
     keyWaitTaskID = rtos.createTask(dspTask, nullptr, 1, 2048);
 
