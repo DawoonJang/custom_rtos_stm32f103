@@ -19,7 +19,6 @@ struct Boxes
 };
 
 Boxes templateBoxes[FFT_LENGTH / 2];
-
 volatile int queueBoxes;
 
 void init_templateBoxes()
@@ -29,7 +28,23 @@ void init_templateBoxes()
     {
         templateBoxes[i].x = i * barWidth;
         templateBoxes[i].w = barWidth;
-        templateBoxes[i].color = RED;
+
+        if (i < FFT_LENGTH / 8)
+        {
+            templateBoxes[i].color = RED;
+        }
+        else if (FFT_LENGTH / 8 <= i && i < FFT_LENGTH / 4)
+        {
+            templateBoxes[i].color = GREEN;
+        }
+        else if (FFT_LENGTH / 4 <= i && i < FFT_LENGTH * 3 / 8)
+        {
+            templateBoxes[i].color = WHITE;
+        }
+        else
+        {
+            templateBoxes[i].color = YELLOW;
+        }
     }
 }
 
