@@ -55,22 +55,33 @@ void Task1(void *para)
 
 void Task2(void *para)
 {
-    uartQueueID = rtos.createQueue(4, sizeof(short));
-    signalQueueID = rtos.createQueue(1, sizeof(short));
+    uartQueueID = rtos.createQueue(4, sizeof(char));
+    signalQueueID = rtos.createQueue(1, sizeof(char));
+    unsigned short recvByte;
     unsigned short recvSignal;
-
+    int shortFlag = 0;
+    
     for (;;)
     {
-        if (!rtos.deQueue(uartQueueID, &recvSignal, 1000))
+        if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
         {
             LED_0_Toggle();
         }
         else
         {
-            TIM3_Out_Freq_Generation(recvSignal);
-            Uart_Printf("Received: %d\n", recvSignal);
-            systemDelay(100);
-            TIM3_Out_Stop();
+            if(!shortFlag)
+            {
+                recvSignal = (unsigned char)recvByte;
+            }
+            else
+            {
+                recvSignal |= ((unsigned char)recvByte << 8);
+                // TIM3_Out_Freq_Generation(recvSignal);
+                Uart_Printf("Received: %d\n", recvSignal);
+                // TIM3_Out_Stop();            
+            }
+            systemDelay(50);
+            shortFlag ^= 1;
         }
     }
 }
