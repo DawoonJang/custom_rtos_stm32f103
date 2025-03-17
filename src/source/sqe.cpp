@@ -10,7 +10,7 @@ volatile int keyWaitTaskID;
 volatile int signalQueueID;
 volatile int uartQueueID;
 volatile int mutexID;
-volatile char filterOptions;
+volatile FilterOption filterOptions;
 
 #ifdef TESTCASE2
 
@@ -35,7 +35,7 @@ void init_templateBoxes()
     }
 }
 
-void draw_line(int *fftData, int maxMagnitude)
+void draw_line(short *fftData, short maxMagnitude)
 {
     for (int i = 0; i < FFT_LENGTH / 2; ++i)
     {
@@ -127,44 +127,49 @@ void Task2(void *para)
     }
 }
 
+float pSrc[FFT_LENGTH];
+float pSrcTemp[FFT_LENGTH];
+float pSrcFiltered[FFT_LENGTH];
+
+float pDst_real[FFT_LENGTH];
+float pDst_imag[FFT_LENGTH];
+
+short magnitude[FFT_LENGTH / 2];
+int freqs[FFT_LENGTH / 2];
+short maxMagnitude;
+
 void dspTask(void *para)
 {
-    double pSrc[FFT_LENGTH];
-    double pSrcFiltered[FFT_LENGTH];
-
-    double pDst_real[FFT_LENGTH];
-    double pDst_imag[FFT_LENGTH];
-
-    int magnitude[FFT_LENGTH / 2];
-    int freqs[FFT_LENGTH / 2];
-    int maxMagnitude;
 
     for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
-        pSrc[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) + 0.5 * sin((2 * PI * 64 * i) / SAMPLE_RATE) +
-                  2 * sin((2 * PI * 200 * i) / SAMPLE_RATE);
+        pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) + sin((2 * PI * 64 * i) / SAMPLE_RATE) +
+                  2 * sin((2 * PI * 200 * i) / SAMPLE_RATE) + sin((2 * PI * SIGNAL_FREQ * 3 * i) / SAMPLE_RATE) +
+                  1.5 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE);
     }
 
     while (1)
     {
-        switch (filterOptions)
+        switch (dsp.filterOption)
         {
-        case 0:
-            dsp.FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
+        case FilterOption::Normal:
+            dsp.FFT(pSrc, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
-        case 1:
+        case FilterOption::LPF:
             dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.LPF_Coefficients_20);
-            dsp.FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
+            dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
-        case 2:
-            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_30);
-            dsp.FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
+        case FilterOption::HPF:
+            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_200);
+            dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
-        case 3:
-            dsp.FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
+        case FilterOption::BPF:
+            dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_20);
+            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_80);
+            dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
         default:
@@ -186,7 +191,7 @@ void dspTask(void *para)
         // Uart_Printf("\n");
         draw_line(magnitude, maxMagnitude);
 
-        rtos.delay(1000);
+        rtos.delay(300);
     }
 }
 

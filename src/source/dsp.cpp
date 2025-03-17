@@ -22,26 +22,26 @@ void DSP::precomputeTwiddleFactors(long N)
     }
 }
 
-int DSP::FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
+int DSP::FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, const size_t length)
 {
     /* 1. check 2^n count -> if else then return -1 */
-    if ((N != 0) && ((N & (N - 1)) != 0))
+    if ((length != 0) && ((length & (length - 1)) != 0))
         return -1;
 
     /* 2. initialize destination arrays */
-    for (long i = 0; i < N; ++i)
+    for (size_t i = 0; i < length; ++i)
     {
         pDstReal[i] = pSrc[i];
         pDstImag[i] = 0.0;
     }
 
     /* 4. shuffle input array index to calculate bottom-up style FFT */
-    int log2N = (int)log2(N);
+    size_t log2N = (size_t)log2(length);
     double tmp;
-    for (long n = 1; n < N - 1; ++n)
+    for (size_t n = 1; n < length - 1; ++n)
     {
-        long m = 0; /* reversed num of n*/
-        for (int i = 0; i < log2N; ++i)
+        size_t m = 0; /* reversed num of n*/
+        for (size_t i = 0; i < log2N; ++i)
         {
             m |= ((n >> i) & 1) << (log2N - i - 1); /* reverse the bits */
         }
@@ -54,16 +54,16 @@ int DSP::FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
     }
 
     /* 5. execute fft */
-    for (int loop = 0; loop < log2N; ++loop)
+    for (size_t loop = 0; loop < log2N; ++loop)
     {
-        long regionSize = 1 << (loop + 1);    /* if N=8: 2 -> 4 -> 8 */
-        long kJump = 1 << (log2N - loop - 1); /* if N=8: 4 -> 2 -> 1 */
-        long half = regionSize >> 1;
-        for (long i = 0; i < N; i += regionSize)
+        size_t regionSize = 1 << (loop + 1);    /* if N=8: 2 -> 4 -> 8 */
+        size_t kJump = 1 << (log2N - loop - 1); /* if N=8: 4 -> 2 -> 1 */
+        size_t half = regionSize >> 1;
+        for (size_t i = 0; i < length; i += regionSize)
         {
-            long blockEnd = i + half - 1;
-            long k = 0;
-            for (long j = i; j <= blockEnd; ++j)
+            size_t blockEnd = i + half - 1;
+            size_t k = 0;
+            for (size_t j = i; j <= blockEnd; ++j)
             { /* j start from i */
                 double TR = WR[k] * pDstReal[j + half] - WI[k] * pDstImag[j + half];
                 double TI = WI[k] * pDstReal[j + half] + WR[k] * pDstImag[j + half];
@@ -81,7 +81,8 @@ int DSP::FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
     return 0;
 }
 
-void DSP::FIR_Filter(double *input, double *output, size_t length, const float *coefficients)
+void DSP::FIR_Filter(const float *const input, float *const output, const size_t length,
+                     const float *const coefficients)
 {
     for (size_t i = 0; i < length; i++)
     {
@@ -93,5 +94,24 @@ void DSP::FIR_Filter(double *input, double *output, size_t length, const float *
                 output[i] += coefficients[j] * input[i - j];
             }
         }
+    }
+}
+
+void DSP::changeFilterOption(void)
+{
+    switch (filterOption)
+    {
+    case FilterOption::Normal:
+        filterOption = FilterOption::LPF;
+        break;
+    case FilterOption::LPF:
+        filterOption = FilterOption::HPF;
+        break;
+    case FilterOption::HPF:
+        filterOption = FilterOption::BPF;
+        break;
+    case FilterOption::BPF:
+        filterOption = FilterOption::Normal;
+        break;
     }
 }

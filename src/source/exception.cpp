@@ -125,7 +125,7 @@ extern "C"
 
     volatile int keyValue;
     extern volatile int keyWaitTaskID;
-    extern volatile short filterOptions;
+    extern volatile FilterOption filterOptions;
     void EXTI9_5_IRQHandler(void)
     {
         scopedItrLock lock;
@@ -133,7 +133,8 @@ extern "C"
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
-        filterOptions = (filterOptions < 3) ? (filterOptions + 1) : 0;
+
+        dsp.changeFilterOption();
         // rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
