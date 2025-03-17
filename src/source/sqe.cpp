@@ -1,6 +1,6 @@
 #include "sqe.h"
-#include "device_driver.h"
 #include "arm_math.h"
+#include "device_driver.h"
 #include "lcd.h"
 
 extern volatile int Key_Value;
@@ -10,6 +10,7 @@ volatile int keyWaitTaskID;
 volatile int signalQueueID;
 volatile int uartQueueID;
 volatile int mutexID;
+volatile char filterOptions;
 
 #ifdef TESTCASE2
 
@@ -36,7 +37,6 @@ void init_templateBoxes()
 
 void draw_line(int *fftData, int maxMagnitude)
 {
-
     for (int i = 0; i < FFT_LENGTH / 2; ++i)
     {
         Boxes obj;
@@ -69,8 +69,6 @@ void canvasGKTask(void *para)
     {
         if (rtos.deQueue(queueBoxes, &obj, 100))
         {
-            Uart_Printf("TP: %d_%d_%d_%d_%d\n", obj.x, obj.y, obj.w, obj.h, obj.color);
-
             Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
         }
     }
@@ -129,84 +127,8 @@ void Task2(void *para)
     }
 }
 
-void ftos(char *str, double fl)
-{
-    char buf[20];
-    long long i = (long long)fl; // 정수 부분
-    double f = fl - i;           // 소수 부분
-    int idx = 0;
-
-    // 음수 처리
-    if (fl < 0)
-    {
-        str[idx++] = '-';
-        i = -i; // 정수 부분 양수화
-        f = -f; // 소수 부분 양수화
-    }
-
-    // 정수 부분을 문자열로 변환
-    if (i == 0)
-    {
-        str[idx++] = '0';
-    }
-    else
-    {
-        int int_start = idx; // 숫자 시작 위치 저장
-        while (i)
-        {
-            buf[idx - int_start] = i % 10 + '0';
-            i /= 10;
-            idx++;
-        }
-        // 숫자 반전 (거꾸로 저장되어 있기 때문)
-        for (int j = 0; j < (idx - int_start) / 2; j++)
-        {
-            char temp = buf[j];
-            buf[j] = buf[idx - int_start - 1 - j];
-            buf[idx - int_start - 1 - j] = temp;
-        }
-        // 복사
-        for (int j = 0; j < idx - int_start; j++)
-        {
-            str[int_start + j] = buf[j];
-        }
-    }
-
-    str[idx++] = '.'; // 소수점 추가
-
-    // 소수 부분 변환 (5자리까지)
-    for (int j = 0; j < 5; j++)
-    {
-        f *= 10;
-        int digit = (int)f;
-        str[idx++] = digit + '0';
-        f -= digit;
-    }
-
-    str[idx] = '\0'; // 문자열 종료
-}
-
-void Uart1_PrintStr(double *real, double *imag, size_t length)
-{
-    char real_char[20];
-    char imag_char[20];
-
-    for (size_t i = 0; i < length; i++)
-    {
-        ftos(real_char, real[i]);
-        ftos(imag_char, imag[i]);
-
-        Uart_Printf("%s+j%s\n", real_char, imag_char);
-    }
-    Uart1_Printf("\n");
-}
-
-volatile char filterOptions;
-
 void dspTask(void *para)
 {
-    static short prevfilterOptions;
-
     double pSrc[FFT_LENGTH];
     double pSrcFiltered[FFT_LENGTH];
 
@@ -215,7 +137,7 @@ void dspTask(void *para)
 
     int magnitude[FFT_LENGTH / 2];
     int freqs[FFT_LENGTH / 2];
-    int maxMagnitude = 1;
+    int maxMagnitude;
 
     for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
@@ -225,11 +147,6 @@ void dspTask(void *para)
 
     while (1)
     {
-        // memset(pDst_real, 0, sizeof(pDst_real));
-        // memset(pDst_imag, 0, sizeof(pDst_imag));
-
-        // Uart_Printf("TP: %d\n", filterOptions);
-
         switch (filterOptions)
         {
         case 0:
@@ -237,12 +154,12 @@ void dspTask(void *para)
             break;
 
         case 1:
-            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.LPF_Coefficients);
+            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.LPF_Coefficients_20);
             dsp.FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
             break;
 
         case 2:
-            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients);
+            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_30);
             dsp.FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
             break;
 
@@ -254,8 +171,10 @@ void dspTask(void *para)
             break;
         }
 
+        maxMagnitude = 1;
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
+
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
             magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
 
