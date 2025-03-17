@@ -38,11 +38,13 @@ _PendSV_Handler:
     .global _SVC_Handler
 	.type 	_SVC_Handler, %function
 _SVC_Handler:
+    cpsid   i
     ldr     r3, =currentTaskGlobal
     ldr     r1, [r3]
     ldr     r0, [r1]
     ldmia   r0!, {r4-r11}
     msr     psp, r0
 
-    orr     lr, lr, #0xd
+    orr     lr, #0xd
+    cpsie   i
     bx      lr

@@ -69,7 +69,18 @@
         "__split_buffer": "cpp",
         "bitset": "cpp",
         "__node_handle": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__locale": "cpp",
+        "complex": "cpp",
+        "__bit_reference": "cpp",
+        "__threading_support": "cpp",
+        "__verbose_abort": "cpp",
+        "execution": "cpp",
+        "ios": "cpp",
+        "istream": "cpp",
+        "locale": "cpp",
+        "print": "cpp",
+        "sstream": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

@@ -1,5 +1,5 @@
-#include "../include/os.h"
-#include "../include/device_driver.h"
+#include "os.h"
+#include "device_driver.h"
 
 #include <string.h>
 
@@ -44,6 +44,8 @@ void LivingRTOS::deleteTask(int taskID)
 
 void LivingRTOS::scheduleTask(void)
 {
+    scopedItrLock lock;
+
     executeTaskSwitching();
 
     constexpr uint8_t HIGHEST_PRIORITY = 0xF << 4;
