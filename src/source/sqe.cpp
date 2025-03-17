@@ -4,7 +4,7 @@
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
-extern volatile int keyWaitTaskID;
+volatile int keyWaitTaskID;
 
 volatile int signalQueueID;
 volatile int uartQueueID;
@@ -56,7 +56,7 @@ void Task2(void *para)
             {
                 recvSignal |= ((unsigned char)recvByte << 8);
                 // TIM3_Out_Freq_Generation(recvSignal);
-                Uart_Printf("Received: %d\n", recvSignal);
+                // Uart_Printf("Received: %d\n", recvSignal);
                 // TIM3_Out_Stop();
             }
             systemDelay(50);
@@ -217,9 +217,37 @@ int FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
     return 0;
 }
 
+#define FILTER_ORDER 32 // FIR 필터 계수 개수
+
+float LPF_Coefficients[FILTER_ORDER] = {0.0022,  0.0042,  0.0061,  0.0076,  0.0087,  0.0091,  0.0087,  0.0076,
+                                        0.0061,  0.0042,  0.0022,  0.0001,  -0.0019, -0.0037, -0.0053, -0.0067,
+                                        -0.0076, -0.0081, -0.0081, -0.0076, -0.0067, -0.0053, -0.0037, -0.0019,
+                                        0.0001,  0.0022,  0.0042,  0.0061,  0.0076,  0.0087,  0.0091,  0.0087}; // 20Hz
+
+float HPF_Coefficients[FILTER_ORDER] = {0.0006,  0.0013,  0.0024,  0.0038,  0.0054,  0.0065,  0.0060,  0.0027,
+                                        -0.0067, -0.0042, -0.0153, -0.0305, -0.0488, -0.0685, -0.0874, -0.1031,
+                                        0.8825,  -0.1135, -0.1031, -0.0874, -0.0685, -0.0488, -0.0305, -0.0153,
+                                        -0.0042, 0.0027,  0.0060,  0.0065,  0.0054,  0.0038,  0.0024,  0.0013}; // 30Hz
+
+void FIR_Filter(double *input, double *output, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        output[i] = 0.0;
+        for (size_t j = 0; j < FILTER_ORDER; j++)
+        {
+            if (i >= j)
+            {
+                output[i] += HPF_Coefficients[j] * input[i - j];
+            }
+        }
+    }
+}
+
 void Task3(void *para)
 {
     double pSrc[FFT_LENGTH];
+    double pSrcFiltered[FFT_LENGTH];
 
     double pDst_real[FFT_LENGTH];
     double pDst_imag[FFT_LENGTH];
@@ -229,13 +257,15 @@ void Task3(void *para)
 
     for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
-        pSrc[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE);
+        pSrc[i] = sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) + 0.5 * sin((2 * PI * 64 * i) / SAMPLE_RATE) +
+                  2 * sin((2 * PI * 200 * i) / SAMPLE_RATE);
     }
+
+    FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH);
+    FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
 
     while (1)
     {
-        FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
-
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
@@ -244,7 +274,7 @@ void Task3(void *para)
         }
         Uart_Printf("\n");
 
-        rtos.delay(2000);
+        rtos.delay(3000);
     }
 }
 
@@ -321,8 +351,8 @@ void developmentVerify(void)
 {
 #ifdef TESTCASE2
 
-    // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 1024);
-    // rtos.createTask(Task2, nullptr, 3, 1024);
+    keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2048);
+    rtos.createTask(Task2, nullptr, 3, 2048);
     rtos.createTask(Task3, nullptr, 1, 2048);
 
 #elif defined(TESTCASE3)

@@ -123,8 +123,8 @@ extern "C"
         trigger_context_switch();
     }
 
-    volatile int keyValue = 0;
-    volatile int keyWaitTaskID;
+    volatile int keyValue;
+    extern volatile int keyWaitTaskID;
 
     void EXTI9_5_IRQHandler(void)
     {
@@ -132,7 +132,7 @@ extern "C"
 
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
-
+        systemDelay(10);
         rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 

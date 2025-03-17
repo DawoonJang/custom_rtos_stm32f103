@@ -9,11 +9,13 @@ import struct
 import threading
 import serial.tools.list_ports
 from tkinter import scrolledtext
+import re
 
 class UartHandler:
-    def __init__(self, log_callback):
+    def __init__(self, log_callback, data_callback):
         self.device = None
         self.log_callback = log_callback
+        self.data_callback = data_callback
         self.port = self.find_cp2102_port()
         if self.port:
             self.device = self.set_uart_comm(self.port)
@@ -49,41 +51,47 @@ class UartHandler:
             if self.device:
                 self.device.flush()
                 output = self.device.readline().decode().strip()
-                if output:
+                match = re.search(r"Received: (\d+)", output)
+                if match:
+                    output = int(match.group(1))
                     self.log_callback(f"[RX] {output}")
-            time.sleep(0.01)
+                    self.data_callback(output)
+            time.sleep(1)
 
-    def send_wave_data(self, frequency, sampling_rate, duration):
+    def start_sending(self, data):
+        packet = struct.pack("<H", 32555)
+        self.device.write(packet)
+        time.sleep(1)
+        thread2 = threading.Thread(target=self.send_wave_data, daemon=True, args=(data,))
+        thread2.start()
+
+    def send_wave_data(self, data):
         if not self.device:
             self.log_callback("[ERROR] Device not connected!")
             return
         
-        packet = bytearray(10)
-        packet[:2] = struct.pack("<H", 32555)
-        packet[2:4] = struct.pack("<H", frequency)
-        packet[4:6] = struct.pack("<H", sampling_rate)
-        packet[6:8] = struct.pack("<H", duration)
-        packet[8:10] = struct.pack("<H", 32666)
-        
-        self.log_callback(f"[TX] Sending: f={frequency}, sr={sampling_rate}, d={duration}")
-        for byte in packet:
-            self.device.write(byte.to_bytes())
-            time.sleep(0.05)
+        for d in data:
+            packet = struct.pack("<H", int(d))
+            self.device.write(packet)
+            print(d)
+            time.sleep(1)
 
 class SineWaveGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Sine Wave Animation with UART Log")
         self.setup_ui()
-        self.uart = UartHandler(self.log_message)
+        self.received_data = []
+        self.uart = UartHandler(self.log_message, self.update_received_data)
         self.ani = None
+        self.rx_ani = None
 
     def setup_ui(self):
         main_frame = tk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Matplotlib Figure 생성
-        self.fig, self.ax = plt.subplots()
+        self.fig, (self.ax, self.rx_ax) = plt.subplots(2, 1, figsize=(5, 6))
         self.canvas = FigureCanvasTkAgg(self.fig, master=main_frame)
         self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -116,18 +124,24 @@ class SineWaveGUI:
         self.plot_button.grid(row=3, columnspan=2)
 
         # 그래프 초기화
-        self.ax.set_xlim(0, 2)
-        self.ax.set_ylim(-1.2, 1.2)
         self.ax.set_xlabel("Time [s]")
         self.ax.set_ylabel("Amplitude")
-        self.ax.set_title("Sine Wave Animation")
+        self.ax.set_title("Sent Sine Wave")
         self.line, = self.ax.plot([], [], lw=2)
+        
+        self.rx_ax.set_xlabel("Time [s]")
+        self.rx_ax.set_ylabel("Amplitude")
+        self.rx_ax.set_title("Received Sine Wave")
+        self.rx_line, = self.rx_ax.plot([], [], lw=2)
 
     def log_message(self, message):
         self.log_text.config(state=tk.NORMAL)
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.yview(tk.END)
         self.log_text.config(state=tk.DISABLED)
+
+    def update_received_data(self, value):
+        self.received_data.append(value)
 
     def plot_animation(self):
         try:
@@ -138,21 +152,28 @@ class SineWaveGUI:
             self.log_message("[ERROR] 올바른 숫자를 입력하세요.")
             return
 
-        self.uart.send_wave_data(frequency, sampling_rate, duration)
         t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
-        y_data = np.sin(2 * np.pi * frequency * t)
+        y_data = np.round(np.sin(2 * np.pi * frequency * t) * 100 + 100)
+        self.uart.start_sending(tuple(y_data))
+        
         self.ax.set_xlim(0, duration)
-        self.ax.set_ylim(-1.2, 1.2)
-        self.ax.set_title(f"Sine Wave (f={frequency}Hz, sr={sampling_rate}Hz, d={duration}s)")
+        self.ax.set_ylim(0, 200)
         self.line.set_data([], [])
+        self.rx_ax.set_xlim(0, duration)
+        self.rx_ax.set_ylim(0, 200)
         
         def update(frame):
             self.line.set_data(t[:frame], y_data[:frame])
             return self.line,
 
+        def update_rx(frame):
+            self.rx_line.set_data(range(len(self.received_data)), self.received_data)
+            return self.rx_line,
+
         if self.ani:
             self.ani.event_source.stop()
         self.ani = animation.FuncAnimation(self.fig, update, frames=len(t), interval=20, blit=False)
+        self.rx_ani = animation.FuncAnimation(self.fig, update_rx, len(t), interval=20, blit=False, cache_frame_data=False)
         self.canvas.draw()
 
 if __name__ == "__main__":
