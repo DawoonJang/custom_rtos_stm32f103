@@ -1,14 +1,69 @@
 #include "sqe.h"
 #include "arm_math.h"
 #include "device_driver.h"
+#include "lcd.h"
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
-extern volatile int keyWaitTaskID;
+volatile int keyWaitTaskID;
 
 volatile int signalQueueID;
 volatile int uartQueueID;
 volatile int mutexID;
+
+int data[5][90] =
+						{
+							{50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175, 
+							 50, 100, 150, 200, 250, 300, 50, 75, 125, 175},
+							
+							{23, 56, 123, 178, 89, 240, 34, 78, 150, 200, 
+							 12, 99, 187, 45, 199, 201, 50, 70, 130, 175, 
+							 85, 145, 170, 65, 34, 90, 120, 150, 75, 180, 
+							 200, 160, 25, 60, 220, 115, 100, 180, 200, 110, 
+							 80, 125, 170, 140, 95, 230, 140, 180, 160, 100, 
+							 80, 125, 170, 140, 95, 230, 140, 180, 160, 100, 
+							 80, 125, 170, 140, 95, 230, 140, 180, 160, 100, 
+							 80, 125, 170, 140, 95, 230, 140, 180, 160, 100, 
+							 125, 130, 110, 105, 175, 220, 30, 160, 130, 120},
+							
+							{10, 45, 90, 140, 200, 60, 50, 105, 150, 190, 
+							 25, 75, 120, 185, 90, 150, 130, 100, 110, 165, 
+							 175, 50, 140, 180, 85, 75, 195, 55, 130, 135, 
+							 145, 210, 100, 80, 110, 160, 180, 50, 170, 90, 
+							 210, 40, 60, 190, 160, 220, 30, 140, 125, 105, 
+							 210, 40, 60, 190, 160, 220, 30, 140, 125, 105, 
+							 210, 40, 60, 190, 160, 220, 30, 140, 125, 105, 
+							 210, 40, 60, 190, 160, 220, 30, 140, 125, 105, 
+							 175, 50, 70, 180, 40, 125, 150, 195, 70, 110},
+							
+							{5, 70, 130, 160, 210, 55, 60, 145, 100, 180, 
+							 120, 95, 170, 80, 150, 205, 35, 60, 150, 115, 
+							 180, 140, 105, 125, 155, 50, 190, 75, 30, 200, 
+							 60, 125, 90, 170, 215, 120, 145, 80, 160, 50, 
+							 75, 135, 100, 190, 230, 150, 100, 140, 120, 180, 
+							 75, 135, 100, 190, 230, 150, 100, 140, 120, 180, 
+							 75, 135, 100, 190, 230, 150, 100, 140, 120, 180, 
+							 75, 135, 100, 190, 230, 150, 100, 140, 120, 180, 
+							 110, 165, 90, 205, 175, 85, 120, 75, 125, 155},
+							
+							{30, 90, 160, 180, 240, 55, 105, 50, 125, 200, 
+							 60, 135, 150, 95, 130, 175, 25, 145, 80, 190, 
+							 110, 140, 180, 70, 155, 120, 200, 35, 90, 220, 
+							 75, 180, 100, 145, 70, 185, 115, 160, 145, 50, 
+							 120, 110, 135, 180, 190, 200, 90, 70, 150, 60, 
+							 120, 110, 135, 180, 190, 200, 90, 70, 150, 60, 
+							 120, 110, 135, 180, 190, 200, 90, 70, 150, 60, 
+							 120, 110, 135, 180, 190, 200, 90, 70, 150, 60, 
+							 155, 160, 180, 190, 135, 120, 75, 105, 60, 130}
+						};
+int row_data[90];
 
 #ifdef TESTCASE2
 
@@ -39,30 +94,45 @@ void Task2(void *para)
     unsigned short recvByte;
     unsigned short recvSignal;
     int shortFlag = 0;
-
-    for (;;)
+    for (int i = 0; i < 90; i++)
     {
-        if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
-        {
-            LED_0_Toggle();
-        }
-        else
-        {
-            if (!shortFlag)
-            {
-                recvSignal = (unsigned char)recvByte;
-            }
-            else
-            {
-                recvSignal |= ((unsigned char)recvByte << 8);
-                // TIM3_Out_Freq_Generation(recvSignal);
-                Uart_Printf("Received: %d\n", recvSignal);
-                // TIM3_Out_Stop();
-            }
-            systemDelay(50);
-            shortFlag ^= 1;
-        }
+        row_data[i] = i;
     }
+
+    static int cnt = 0;
+	for(;;)
+	{
+		// Uart_Printf("TaskLCD\n");
+		int length = sizeof(data[cnt]) / sizeof(data[0][0]);
+		int row_length = sizeof(data) / sizeof(data[0]);
+		Lcd_Draw_Bar_Graph(row_data, data[cnt], length);
+		cnt = (cnt + 1) % row_length;
+        systemDelay(10);
+
+	}
+    // for (;;)
+    // {
+    //     if (!rtos.deQueue(uartQueueID, &recvByte, 1000))
+    //     {
+    //         LED_0_Toggle();
+    //     }
+    //     else
+    //     {
+    //         if (!shortFlag)
+    //         {
+    //             recvSignal = (unsigned char)recvByte;
+    //         }
+    //         else
+    //         {
+    //             recvSignal |= ((unsigned char)recvByte << 8);
+    //             // TIM3_Out_Freq_Generation(recvSignal);
+    //             Uart_Printf("Received: %d\n", recvSignal);
+    //             // TIM3_Out_Stop();
+    //         }
+    //         systemDelay(50);
+    //         shortFlag ^= 1;
+    //     }
+    // }
 }
 
 #define FFT_LENGTH 64
@@ -243,8 +313,9 @@ void Task3(void *para)
             Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         Uart_Printf("\n");
+        Lcd_Draw_Bar_Graph(freqs, magnitude, FFT_LENGTH / 2);
 
-        rtos.delay(2000);
+        rtos.delay(1000);
     }
 }
 
@@ -321,9 +392,9 @@ void developmentVerify(void)
 {
 #ifdef TESTCASE2
 
-    // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 1024);
-    // rtos.createTask(Task2, nullptr, 3, 1024);
-    rtos.createTask(Task3, nullptr, 1, 2048);
+    keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2024);
+    // rtos.createTask(Task2, nullptr, 3, 1024 * 3);
+    rtos.createTask(Task3, nullptr, 2, 2048);
 
 #elif defined(TESTCASE3)
 

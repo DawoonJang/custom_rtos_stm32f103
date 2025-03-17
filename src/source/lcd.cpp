@@ -1,5 +1,8 @@
 #include "../include/device_driver.h"
 #include "../include/lcd.h"
+#ifdef __cplusplus
+extern "C"
+{
 
 #define Lcd_W 			240
 #define Lcd_H 			320
@@ -495,43 +498,45 @@ void Lcd_Draw_Bar(unsigned short x, unsigned short y, unsigned short height, uns
     Lcd_Draw_Box(x, y, BAR_WIDTH, height, color);
 }
 
-void Lcd_Draw_Bar_Graph(unsigned short data[], unsigned short data_size)
+void Lcd_Draw_Bar_Graph(const int row[], const int data[], unsigned short data_size)
 {
-    unsigned short x_pos = 0;
+    // unsigned short x_pos = 0;
 	unsigned short color_idx = 0;
 
     for (unsigned short i = 0; i < data_size; i++)
     {
         short bar_height = (data[i] > MAX_HEIGHT) ? MAX_HEIGHT : data[i];
-		if (x_pos < FONT_POS && bar_height >= MAX_HEIGHT - FONT_POS)
+		if (row[i] < FONT_POS && bar_height >= MAX_HEIGHT - FONT_POS)
 		{
 			bar_height -= FONT_POS;
 		}
 		
         short remaining_height = MAX_HEIGHT - bar_height;
 
-        Lcd_Draw_Bar(x_pos, MAX_HEIGHT - bar_height, bar_height, color_set[color_idx]); 
+        Lcd_Draw_Bar(row[i], MAX_HEIGHT - bar_height, bar_height, color_set[color_idx]); 
 		
         if (remaining_height > 0)
         {
-			if (x_pos < FONT_POS)
+			if (row[i] < FONT_POS)
 			{
-				Lcd_Draw_Bar(x_pos, FONT_POS, (remaining_height - FONT_POS > 0 ? remaining_height - FONT_POS : 0), BLACK);
+				Lcd_Draw_Bar(row[i], FONT_POS, (remaining_height - FONT_POS > 0 ? remaining_height - FONT_POS : 0), BLACK);
 			}
 			else
 			{
-				Lcd_Draw_Bar(x_pos, 0, remaining_height, BLACK);
+				Lcd_Draw_Bar(row[i], 0, remaining_height, BLACK);
 			}
         }
         
 		if ((i+1) % (data_size/3) == 0)
 		{
 			color_idx = (color_idx + 1) % (sizeof(color_set) / sizeof(color_set[0]));
-			x_pos += 25;
+			// x_pos += 25;
 		}
 		else
 		{
-			x_pos += BAR_WIDTH + BAR_SPACING;
+			// x_pos += BAR_WIDTH + BAR_SPACING;
 		}
     }
 }
+}
+#endif

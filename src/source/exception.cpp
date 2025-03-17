@@ -124,15 +124,16 @@ extern "C"
     }
 
     volatile int keyValue = 0;
-    volatile int keyWaitTaskID;
+    extern volatile int keyWaitTaskID;
 
     void EXTI9_5_IRQHandler(void)
     {
-        keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
-
-        EXTI->PR = 0x3 << 6;
-        NVIC_ClearPendingIRQ((IRQn_Type)23);
-
+        keyValue = Macro_Extract_Area(EXTI->PR,0x7,5);
+        
+        EXTI->PR = (0x7<<5);
+        NVIC_ClearPendingIRQ((IRQn_Type)EXTI9_5_IRQn);
+        
+        systemDelay(10);
         rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 

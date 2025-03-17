@@ -20,7 +20,7 @@
 #define PRIO_LOWEST (10)
 #define NUM_PRIO (PRIO_LOWEST - PRIO_HIGHEST + 1)
 
-#define STACK_SIZE (4 * 1024)
+#define STACK_SIZE (8 * 1024)
 #define INIT_PSR (0x01000000)
 #define TICK_MS (5)
 

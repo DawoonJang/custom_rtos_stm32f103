@@ -58,6 +58,8 @@ void SystemInit()
     LED_All_Off();
     /* LED INIT */
 
+    Lcd_Init();
+
     /* Buzzer INIT */
     TIM3_Out_Init();
 

@@ -2,6 +2,9 @@
 #define LCD_H
 // Lcd.a (Library)
 // SPI1 @36MHz (PCLK2=72MHz)
+#ifdef __cplusplus
+extern "C"
+{
 
 #define BLACK	0x0000
 #define WHITE	0xffff
@@ -31,7 +34,9 @@ extern void Lcd_Clr_Screen(void);
 extern void Lcd_Draw_Back_Color(unsigned short color);
 extern void Lcd_Write_Data_16Bit(unsigned short color);
 extern void Lcd_Draw_Box(int xs, int ys, int w, int h, unsigned short Color);
-void Lcd_Draw_Bar_Graph(unsigned short data[], unsigned short data_size);
+void Lcd_Draw_Bar_Graph(const int row[], const int data[], unsigned short data_size);
 void Lcd_Draw_Char(unsigned short x, unsigned short y, char c, unsigned short color);
 void Lcd_Draw_Bar(unsigned short x, unsigned short y, unsigned short height, unsigned short color);
+}
+#endif
 #endif
