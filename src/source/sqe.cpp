@@ -156,6 +156,8 @@ void dspTask(void *para)
 
     while (1)
     {
+        rtos.lockMutex(mutexID);
+
         switch (dsp.filterOption)
         {
         case FilterOption::Normal:
@@ -174,7 +176,7 @@ void dspTask(void *para)
 
         case FilterOption::BPF:
             dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_20);
-            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_80);
+            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_100);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
@@ -182,10 +184,11 @@ void dspTask(void *para)
             break;
         }
 
+        rtos.unlockMutex(mutexID);
+
         maxMagnitude = 1;
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
-
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
             magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
 
@@ -194,6 +197,7 @@ void dspTask(void *para)
 
             // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
+
         // Uart_Printf("\n");
         draw_line(magnitude, maxMagnitude);
 
