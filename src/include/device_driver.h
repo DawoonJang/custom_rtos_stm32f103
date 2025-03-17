@@ -73,6 +73,9 @@ extern "C"
     void TIM3_Out_Freq_Generation(unsigned short freq);
     void TIM3_Out_Stop(void);
 
+    // lcd.c
+    extern void Lcd_Init(void);
+    
 #ifdef __cplusplus
 }
 #endif

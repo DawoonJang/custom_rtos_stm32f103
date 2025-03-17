@@ -1,6 +1,7 @@
 #include "sqe.h"
 #include "arm_math.h"
 #include "device_driver.h"
+#include "lcd.h"
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
@@ -12,25 +13,90 @@ volatile int mutexID;
 
 #ifdef TESTCASE2
 
-void Task1(void *para)
-{
-    int fflag;
-    static char cnt;
+#define FFT_LENGTH 64
+#define SAMPLE_RATE 512
+#define SIGNAL_FREQ 16
 
-    for (;;)
+struct Boxes
+{
+    int x, y;
+    int w, h;
+    int color;
+};
+
+Boxes templateBoxes[FFT_LENGTH / 2];
+
+volatile int queueBoxes;
+
+void init_templateBoxes()
+{
+    int barWidth = X_MAX / (FFT_LENGTH / 2);
+    for (int i = 0; i < FFT_LENGTH / 2; ++i)
     {
-        if (rtos.waitForSignal(&fflag, 5000) == true)
+        templateBoxes[i].x = i * barWidth;
+        templateBoxes[i].y = Y_MAX - 120;
+        templateBoxes[i].w = barWidth - 2;
+        templateBoxes[i].h = 60;
+        templateBoxes[i].color = 0xFFFF; // 기본 색상 (예: 흰색)
+    }
+}
+
+void draw_line(int *fftData, int maxMagnitude)
+{
+    for (int i = 0; i < FFT_LENGTH / 2; ++i)
+    {
+        Boxes obj;
+        obj.x = templateBoxes[i].x;
+        obj.w = templateBoxes[i].w;
+        obj.color = templateBoxes[i].color;
+
+        obj.y = templateBoxes[i].y;
+        obj.h = templateBoxes[i].h;
+        obj.color = COLOR_BACK;
+        rtos.enQueue(queueBoxes, &obj);
+
+        int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
+        obj.y = Y_MAX - normalizedHeight;
+        obj.h = normalizedHeight;
+        obj.color = templateBoxes[i].color;
+        rtos.enQueue(queueBoxes, &obj);
+    }
+}
+
+void canvasGKTask(void *para)
+{
+    Boxes obj;
+    init_templateBoxes();
+    queueBoxes = rtos.createQueue(FFT_LENGTH / 2, sizeof(Boxes));
+
+    while (1)
+    {
+        if (rtos.deQueue(queueBoxes, &obj, 100))
         {
-            LED_1_Toggle();
-            cnt++;
-            Uart_Printf("%d Button_Pressed\n", cnt);
-        }
-        else
-        {
-            ;
+            Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
         }
     }
 }
+
+// void Task1(void *para)
+// {
+//     int fflag;
+//     static char cnt;
+
+//     for (;;)
+//     {
+//         if (rtos.waitForSignal(&fflag, 5000) == true)
+//         {
+//             LED_1_Toggle();
+//             cnt++;
+//             Uart_Printf("%d Button_Pressed\n", cnt);
+//         }
+//         else
+//         {
+//             ;
+//         }
+//     }
+// }
 
 void Task2(void *para)
 {
@@ -65,88 +131,10 @@ void Task2(void *para)
     }
 }
 
-#define FFT_LENGTH 64
-#define SAMPLE_RATE 512
-#define SIGNAL_FREQ 16
-
 #define PI 3.14159265358979f
 #define Q15_SCALE (1 << 15) // 2^15
-#define Q31_SCALE (1 << 31)
 #define FLOAT_TO_Q15(x) ((q15_t)((x) * Q15_SCALE))
-#define FLOAT_TO_Q31(x) ((q31_t)((x) * Q31_SCALE))
-#define MAKE_FREQ_IDX(i) (q15_t)(((float)(i)) / (float)FFT_LENGTH * Q15_SCALE)
 
-void ftos(char *str, double fl)
-{
-    char buf[20];
-    long long i = (long long)fl; // 정수 부분
-    double f = fl - i;           // 소수 부분
-    int idx = 0;
-
-    // 음수 처리
-    if (fl < 0)
-    {
-        str[idx++] = '-';
-        i = -i; // 정수 부분 양수화
-        f = -f; // 소수 부분 양수화
-    }
-
-    // 정수 부분을 문자열로 변환
-    if (i == 0)
-    {
-        str[idx++] = '0';
-    }
-    else
-    {
-        int int_start = idx; // 숫자 시작 위치 저장
-        while (i)
-        {
-            buf[idx - int_start] = i % 10 + '0';
-            i /= 10;
-            idx++;
-        }
-        // 숫자 반전 (거꾸로 저장되어 있기 때문)
-        for (int j = 0; j < (idx - int_start) / 2; j++)
-        {
-            char temp = buf[j];
-            buf[j] = buf[idx - int_start - 1 - j];
-            buf[idx - int_start - 1 - j] = temp;
-        }
-        // 복사
-        for (int j = 0; j < idx - int_start; j++)
-        {
-            str[int_start + j] = buf[j];
-        }
-    }
-
-    str[idx++] = '.'; // 소수점 추가
-
-    // 소수 부분 변환 (5자리까지)
-    for (int j = 0; j < 5; j++)
-    {
-        f *= 10;
-        int digit = (int)f;
-        str[idx++] = digit + '0';
-        f -= digit;
-    }
-
-    str[idx] = '\0'; // 문자열 종료
-}
-
-void Uart1_PrintStr(double *real, double *imag, size_t length)
-{
-    char real_char[20];
-    char imag_char[20];
-
-    for (size_t i = 0; i < length; i++)
-    {
-        ftos(real_char, real[i]);
-        ftos(imag_char, imag[i]);
-
-        Uart_Printf("%s+j%s\n", real_char, imag_char);
-    }
-    Uart1_Printf("\n");
-}
 int FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
 {
     /* 1. check 2^n count -> if else then return -1 */
@@ -194,12 +182,12 @@ int FFT(long N, const double *pSrc, double *pDstReal, double *pDstImag)
         long regionSize = 1 << (loop + 1);    /* if N=8: 2 -> 4 -> 8 */
         long kJump = 1 << (log2N - loop - 1); /* if N=8: 4 -> 2 -> 1 */
         long half = regionSize >> 1;
-        for (register long i = 0; i < N; i += regionSize)
+        for (long i = 0; i < N; i += regionSize)
         {
             long blockEnd = i + half - 1;
             long k = 0;
             double TR, TI;
-            for (register long j = i; j <= blockEnd; ++j)
+            for (long j = i; j <= blockEnd; ++j)
             { /* j start from i */
                 TR = WR[k] * pDstReal[j + half] - WI[k] * pDstImag[j + half];
                 TI = WI[k] * pDstReal[j + half] + WR[k] * pDstImag[j + half];
@@ -254,6 +242,7 @@ void Task3(void *para)
 
     int magnitude[FFT_LENGTH / 2];
     int freqs[FFT_LENGTH / 2];
+    int maxMagnitude = 1;
 
     for (size_t i = 0; i < FFT_LENGTH; ++i)
     {
@@ -262,7 +251,7 @@ void Task3(void *para)
     }
 
     FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH);
-    FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
+    FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
 
     while (1)
     {
@@ -270,9 +259,15 @@ void Task3(void *para)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
             magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
+
+            if (magnitude[i] > maxMagnitude)
+                maxMagnitude = magnitude[i];
+
             Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         Uart_Printf("\n");
+
+        draw_line(magnitude, maxMagnitude);
 
         rtos.delay(3000);
     }
@@ -351,8 +346,8 @@ void developmentVerify(void)
 {
 #ifdef TESTCASE2
 
-    keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2048);
-    rtos.createTask(Task2, nullptr, 3, 2048);
+    // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2048);
+    rtos.createTask(canvasGKTask, nullptr, 3, 2048);
     rtos.createTask(Task3, nullptr, 1, 2048);
 
 #elif defined(TESTCASE3)

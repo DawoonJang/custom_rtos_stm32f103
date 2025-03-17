@@ -56,6 +56,78 @@ extern "C"
         }
     }
 
+    void ftos(char *str, double fl)
+    {
+        char buf[20];
+        long long i = (long long)fl; // 정수 부분
+        double f = fl - i;           // 소수 부분
+        int idx = 0;
+
+        // 음수 처리
+        if (fl < 0)
+        {
+            str[idx++] = '-';
+            i = -i; // 정수 부분 양수화
+            f = -f; // 소수 부분 양수화
+        }
+
+        // 정수 부분을 문자열로 변환
+        if (i == 0)
+        {
+            str[idx++] = '0';
+        }
+        else
+        {
+            int int_start = idx; // 숫자 시작 위치 저장
+            while (i)
+            {
+                buf[idx - int_start] = i % 10 + '0';
+                i /= 10;
+                idx++;
+            }
+            // 숫자 반전 (거꾸로 저장되어 있기 때문)
+            for (int j = 0; j < (idx - int_start) / 2; j++)
+            {
+                char temp = buf[j];
+                buf[j] = buf[idx - int_start - 1 - j];
+                buf[idx - int_start - 1 - j] = temp;
+            }
+            // 복사
+            for (int j = 0; j < idx - int_start; j++)
+            {
+                str[int_start + j] = buf[j];
+            }
+        }
+
+        str[idx++] = '.'; // 소수점 추가
+
+        // 소수 부분 변환 (5자리까지)
+        for (int j = 0; j < 5; j++)
+        {
+            f *= 10;
+            int digit = (int)f;
+            str[idx++] = digit + '0';
+            f -= digit;
+        }
+
+        str[idx] = '\0'; // 문자열 종료
+    }
+
+    void Uart1_PrintStr(double *real, double *imag, size_t length)
+    {
+        char real_char[20];
+        char imag_char[20];
+
+        for (size_t i = 0; i < length; i++)
+        {
+            ftos(real_char, real[i]);
+            ftos(imag_char, imag[i]);
+
+            Uart_Printf("%s+j%s\n", real_char, imag_char);
+        }
+        Uart1_Printf("\n");
+    }
+
     void Uart1_Printf(const char *fmt, ...)
     {
 #ifdef DEBUG
