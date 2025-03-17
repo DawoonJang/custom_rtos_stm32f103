@@ -5,6 +5,7 @@
 
 extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
+extern volatile short keyInputFlag;
 volatile int keyWaitTaskID;
 
 volatile int signalQueueID;
@@ -63,6 +64,7 @@ void draw_line(int *fftData, int maxMagnitude)
 void canvasGKTask(void *para)
 {
     Boxes obj;
+    keyInputFlag = 1;
     init_templateBoxes();
     queueBoxes = rtos.createQueue(2 * FFT_LENGTH, sizeof(Boxes));
     while (1)
@@ -70,6 +72,12 @@ void canvasGKTask(void *para)
         if (rtos.deQueue(queueBoxes, &obj, 100))
         {
             Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
+        }
+
+        if (keyInputFlag)
+        {
+            keyInputFlag = 0;
+            Lcd_Draw_Font(filterOptions);
         }
     }
 }

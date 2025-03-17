@@ -32,6 +32,7 @@ extern "C"
 #endif /* __cplusplus */
 
     unsigned short color_set[] = {RED, GREEN, BLUE};
+    unsigned int font_set[BAND_CHAR_NUM] = {YELLOW, GREEN, BLUE, VIOLET};
     unsigned char band_char[BAND_CHAR_NUM] = {'N', 'L', 'H', 'G'};
 
     void Lcd_Write_Reg(unsigned char Lcd_Reg, unsigned short Lcd_RegValue);
@@ -546,6 +547,11 @@ static unsigned char _SPI1_Read_Byte(void)
         }
     }
 
+    void Lcd_Draw_Font(unsigned short filterOptions)
+    {
+        Lcd_Draw_Box(0, 0, FONT_POS, FONT_POS, BLACK);
+        Lcd_Draw_Char(FONT_POS / 2, FONT_POS / 2, band_char[filterOptions], font_set[filterOptions]); 
+    }
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
