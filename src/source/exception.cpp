@@ -125,15 +125,16 @@ extern "C"
 
     volatile int keyValue;
     extern volatile int keyWaitTaskID;
-
+    extern volatile short filterOptions;
     void EXTI9_5_IRQHandler(void)
     {
-        keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
+        scopedItrLock lock;
 
+        keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
-        systemDelay(10);
-        rtos.sendSignal(keyWaitTaskID, keyValue);
+        filterOptions = (filterOptions < 3) ? (filterOptions + 1) : 0;
+        // rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;
@@ -147,7 +148,7 @@ extern "C"
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
 
-        rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
+        // rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }
 
 #ifdef __cplusplus

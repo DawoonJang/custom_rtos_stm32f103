@@ -19,8 +19,7 @@ volatile int mutexID;
 
 struct Boxes
 {
-    int x, y;
-    int w, h;
+    unsigned short x, y, w, h;
     int color;
 };
 
@@ -30,35 +29,37 @@ volatile int queueBoxes;
 
 void init_templateBoxes()
 {
-    int barWidth = X_MAX / (FFT_LENGTH / 2);
+    unsigned short barWidth = MAX_WIDTH / (FFT_LENGTH / 2);
     for (int i = 0; i < FFT_LENGTH / 2; ++i)
     {
         templateBoxes[i].x = i * barWidth;
-        templateBoxes[i].y = Y_MAX - 120;
-        templateBoxes[i].w = barWidth - 2;
-        templateBoxes[i].h = 60;
-        templateBoxes[i].color = 0xFFFF; // 기본 색상 (예: 흰색)
+        templateBoxes[i].w = barWidth;
+        templateBoxes[i].color = RED;
     }
 }
 
 void draw_line(int *fftData, int maxMagnitude)
 {
+
     for (int i = 0; i < FFT_LENGTH / 2; ++i)
     {
         Boxes obj;
         obj.x = templateBoxes[i].x;
         obj.w = templateBoxes[i].w;
-        obj.color = templateBoxes[i].color;
-
         obj.y = templateBoxes[i].y;
         obj.h = templateBoxes[i].h;
-        obj.color = COLOR_BACK;
+        obj.color = BLACK;
         rtos.enQueue(queueBoxes, &obj);
 
         int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
+        obj.x = templateBoxes[i].x;
+        obj.w = templateBoxes[i].w;
         obj.y = Y_MAX - normalizedHeight;
-        obj.h = normalizedHeight;
+        obj.h = normalizedHeight + 1;
         obj.color = templateBoxes[i].color;
+
+        templateBoxes[i].y = obj.y;
+        templateBoxes[i].h = obj.h;
         rtos.enQueue(queueBoxes, &obj);
     }
 }
@@ -67,12 +68,13 @@ void canvasGKTask(void *para)
 {
     Boxes obj;
     init_templateBoxes();
-    queueBoxes = rtos.createQueue(FFT_LENGTH / 2, sizeof(Boxes));
-
+    queueBoxes = rtos.createQueue(2 * FFT_LENGTH, sizeof(Boxes));
     while (1)
     {
         if (rtos.deQueue(queueBoxes, &obj, 100))
         {
+            Uart_Printf("TP: %d_%d_%d_%d_%d\n", obj.x, obj.y, obj.w, obj.h, obj.color);
+
             Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
         }
     }
@@ -217,7 +219,22 @@ float HPF_Coefficients[FILTER_ORDER] = {0.0006,  0.0013,  0.0024,  0.0038,  0.00
                                         0.8825,  -0.1135, -0.1031, -0.0874, -0.0685, -0.0488, -0.0305, -0.0153,
                                         -0.0042, 0.0027,  0.0060,  0.0065,  0.0054,  0.0038,  0.0024,  0.0013}; // 30Hz
 
-void FIR_Filter(double *input, double *output, size_t length)
+void LPF(double *input, double *output, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        output[i] = 0.0;
+        for (size_t j = 0; j < FILTER_ORDER; j++)
+        {
+            if (i >= j)
+            {
+                output[i] += LPF_Coefficients[j] * input[i - j];
+            }
+        }
+    }
+}
+
+void HPF(double *input, double *output, size_t length)
 {
     for (size_t i = 0; i < length; i++)
     {
@@ -232,8 +249,12 @@ void FIR_Filter(double *input, double *output, size_t length)
     }
 }
 
-void Task3(void *para)
+volatile char filterOptions;
+
+void dspTask(void *para)
 {
+    static short prevfilterOptions;
+
     double pSrc[FFT_LENGTH];
     double pSrcFiltered[FFT_LENGTH];
 
@@ -250,11 +271,37 @@ void Task3(void *para)
                   2 * sin((2 * PI * 200 * i) / SAMPLE_RATE);
     }
 
-    FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH);
-    FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
-
     while (1)
     {
+        // memset(pDst_real, 0, sizeof(pDst_real));
+        // memset(pDst_imag, 0, sizeof(pDst_imag));
+
+        // Uart_Printf("TP: %d\n", filterOptions);
+
+        switch (filterOptions)
+        {
+        case 0:
+            FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
+            break;
+
+        case 1:
+            LPF(pSrc, pSrcFiltered, FFT_LENGTH);
+            FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
+            break;
+
+        case 2:
+            HPF(pSrc, pSrcFiltered, FFT_LENGTH);
+            FFT(FFT_LENGTH, pSrcFiltered, pDst_real, pDst_imag);
+            break;
+
+        case 3:
+            FFT(FFT_LENGTH, pSrc, pDst_real, pDst_imag);
+            break;
+
+        default:
+            break;
+        }
+
         for (size_t i = 0; i < FFT_LENGTH / 2; i++)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
@@ -263,13 +310,12 @@ void Task3(void *para)
             if (magnitude[i] > maxMagnitude)
                 maxMagnitude = magnitude[i];
 
-            Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
+            // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
-        Uart_Printf("\n");
-
+        // Uart_Printf("\n");
         draw_line(magnitude, maxMagnitude);
 
-        rtos.delay(3000);
+        rtos.delay(1000);
     }
 }
 
@@ -313,12 +359,12 @@ void Task2(void *para)
     }
 }
 
-void Task3(void *para)
+void dspTask(void *para)
 {
     volatile int j;
     mutexID = rtos.createMutex();
 
-    Uart_Printf("\nTask3 Lock\n");
+    Uart_Printf("\ndspTask Lock\n");
 
     rtos.lockMutex(mutexID);
 
@@ -330,7 +376,7 @@ void Task3(void *para)
         LED_0_Toggle();
     }
 
-    Uart_Printf("\nTask3 unLock\n");
+    Uart_Printf("\ndspTask unLock\n");
     rtos.unlockMutex(mutexID);
 
     for (;;)
@@ -347,14 +393,14 @@ void developmentVerify(void)
 #ifdef TESTCASE2
 
     // keyWaitTaskID = rtos.createTask(Task1, nullptr, 2, 2048);
-    rtos.createTask(canvasGKTask, nullptr, 3, 2048);
-    rtos.createTask(Task3, nullptr, 1, 2048);
+    rtos.createTask(canvasGKTask, nullptr, 2, 2048);
+    keyWaitTaskID = rtos.createTask(dspTask, nullptr, 1, 2048);
 
 #elif defined(TESTCASE3)
 
     rtos.createTask(Task1, nullptr, 1, 1024);
     rtos.createTask(Task2, nullptr, 2, 1024);
-    rtos.createTask(Task3, nullptr, 3, 1024);
+    rtos.createTask(dspTask, nullptr, 3, 1024);
 
 #endif
 }
