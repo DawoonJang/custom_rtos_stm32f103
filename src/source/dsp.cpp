@@ -1,18 +1,15 @@
 #include "dsp.h"
-
+#include <functional>
 DSP dsp;
-
-static float WR[FFT_LENGTH >> 1];
-static float WI[FFT_LENGTH >> 1];
 
 DSP::DSP()
 {
     precomputeTwiddleFactors(FFT_LENGTH);
 }
 
-void DSP::precomputeTwiddleFactors(long N)
+void DSP::precomputeTwiddleFactors(const unsigned short N)
 {
-    long N2 = N >> 1;
+    unsigned short N2 = N >> 1;
     float T = 2 * PI / N;
 
     for (long i = 0; i < N2; ++i)
@@ -84,10 +81,23 @@ int DSP::FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, co
 void DSP::FIR_Filter(const float *const input, float *const output, const size_t length,
                      const float *const coefficients)
 {
+
+    std::fill(output, output + length, 0.0f);
+
     for (size_t i = 0; i < length; i++)
     {
-        output[i] = 0.0;
-        for (size_t j = 0; j < FILTER_ORDER; j++)
+        size_t j = 0;
+
+        for (; j + 3 < FILTER_ORDER; j += 4) // loop unroll every 4 elements
+        {
+            if (i >= j + 3)
+            {
+                output[i] += coefficients[j] * input[i - j] + coefficients[j + 1] * input[i - (j + 1)] +
+                             coefficients[j + 2] * input[i - (j + 2)] + coefficients[j + 3] * input[i - (j + 3)];
+            }
+        }
+
+        for (; j < FILTER_ORDER; j++)
         {
             if (i >= j)
             {

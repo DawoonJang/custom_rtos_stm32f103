@@ -124,7 +124,6 @@ extern "C"
     }
 
     volatile int keyValue;
-    extern volatile int keyWaitTaskID;
     volatile bool keyInputFlag;
 
     void EXTI9_5_IRQHandler(void)
@@ -136,7 +135,6 @@ extern "C"
 
         keyInputFlag = 1;
         dsp.changeFilterOption();
-        // rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;

@@ -23,10 +23,14 @@ enum class FilterOption
 class DSP
 {
   private:
-    void precomputeTwiddleFactors(long N);
+    float WR[FFT_HALF_LENGTH];
+    float WI[FFT_HALF_LENGTH];
+
+    void precomputeTwiddleFactors(const unsigned short N);
 
   public:
     DSP();
+
     FilterOption filterOption;
 
     int FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, const size_t length);

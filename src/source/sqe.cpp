@@ -3,12 +3,10 @@
 #include "device_driver.h"
 #include "lcd.h"
 
-extern volatile int Key_Value;
 extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
-volatile int keyWaitTaskID;
 
-volatile int mutexID;
+volatile char mutexID;
 
 float pSrc[FFT_LENGTH];
 float pSrcTemp[FFT_LENGTH];
@@ -28,26 +26,27 @@ struct Boxes
     int color;
 };
 
-Boxes templateBoxes[FFT_LENGTH / 2];
-volatile int queueBoxes;
+Boxes templateBoxes[FFT_HALF_LENGTH];
+volatile char queueBoxes;
+volatile bool queueSignal;
 
 void init_templateBoxes()
 {
-    unsigned short barWidth = MAX_WIDTH / (FFT_LENGTH / 2);
-    for (int i = 0; i < FFT_LENGTH / 2; ++i)
+    unsigned short barWidth = MAX_WIDTH / (FFT_HALF_LENGTH);
+    for (int i = 0; i < FFT_HALF_LENGTH; ++i)
     {
         templateBoxes[i].x = i * barWidth;
         templateBoxes[i].w = barWidth;
 
-        if (i < FFT_LENGTH / 8)
+        if (i < FFT_HALF_LENGTH / 4)
         {
             templateBoxes[i].color = RED;
         }
-        else if (FFT_LENGTH / 8 <= i && i < FFT_LENGTH / 4)
+        else if (FFT_HALF_LENGTH / 4 <= i && i < FFT_HALF_LENGTH / 2)
         {
             templateBoxes[i].color = GREEN;
         }
-        else if (FFT_LENGTH / 4 <= i && i < FFT_LENGTH * 3 / 8)
+        else if (FFT_HALF_LENGTH / 2 <= i && i < FFT_HALF_LENGTH * 3 / 4)
         {
             templateBoxes[i].color = WHITE;
         }
@@ -58,38 +57,14 @@ void init_templateBoxes()
     }
 }
 
-void draw_line(short *fftData, short maxMagnitude)
-{
-    for (int i = 0; i < FFT_LENGTH / 2; ++i)
-    {
-        Boxes obj;
-        obj.x = templateBoxes[i].x;
-        obj.w = templateBoxes[i].w;
-        obj.y = templateBoxes[i].y;
-        obj.h = templateBoxes[i].h;
-        obj.color = BLACK;
-        rtos.enQueue(queueBoxes, &obj);
-
-        int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
-        obj.x = templateBoxes[i].x;
-        obj.w = templateBoxes[i].w;
-        obj.y = Y_MAX - normalizedHeight;
-        obj.h = normalizedHeight + 1;
-        obj.color = templateBoxes[i].color;
-
-        templateBoxes[i].y = obj.y;
-        templateBoxes[i].h = obj.h;
-        rtos.enQueue(queueBoxes, &obj);
-    }
-}
-
 void canvasGKTask(void *para)
 {
     Boxes obj;
     keyInputFlag = 1;
-
     init_templateBoxes();
+
     queueBoxes = rtos.createQueue(2 * FFT_LENGTH, sizeof(Boxes));
+
     while (1)
     {
         if (rtos.deQueue(queueBoxes, &obj, 100))
@@ -116,12 +91,38 @@ void signalTask(void *para)
             pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
                       0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
                       2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
+                      1.5 * sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
                       sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
         }
 
         rtos.delay(500);
 
         rtos.unlockMutex(mutexID);
+    }
+}
+
+void draw_line(short *fftData, short maxMagnitude)
+{
+    for (int i = 0; i < FFT_HALF_LENGTH; ++i)
+    {
+        Boxes obj;
+        obj.x = templateBoxes[i].x;
+        obj.w = templateBoxes[i].w;
+        obj.y = templateBoxes[i].y;
+        obj.h = templateBoxes[i].h;
+        obj.color = BLACK;
+        rtos.enQueue(queueBoxes, &obj);
+
+        int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
+        obj.x = templateBoxes[i].x;
+        obj.w = templateBoxes[i].w;
+        obj.y = Y_MAX - normalizedHeight;
+        obj.h = normalizedHeight + 1;
+        obj.color = templateBoxes[i].color;
+
+        templateBoxes[i].y = obj.y;
+        templateBoxes[i].h = obj.h;
+        rtos.enQueue(queueBoxes, &obj);
     }
 }
 
@@ -165,7 +166,7 @@ void dspTask(void *para)
 
         maxMagnitude = 0;
 
-        for (size_t i = 0; i < FFT_LENGTH / 2; i++)
+        for (size_t i = 0; i < FFT_HALF_LENGTH; i++)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
             magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
@@ -175,8 +176,6 @@ void dspTask(void *para)
 
             // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
-
-        // Uart_Printf("\n");
         draw_line(magnitude, maxMagnitude);
 
         rtos.delay(300);
@@ -258,7 +257,7 @@ void developmentVerify(void)
 
     rtos.createTask(signalTask, nullptr, 3, 2048);
     rtos.createTask(canvasGKTask, nullptr, 2, 2048);
-    keyWaitTaskID = rtos.createTask(dspTask, nullptr, 1, 2048);
+    rtos.createTask(dspTask, nullptr, 1, 2048);
 
 #elif defined(TESTCASE3)
 

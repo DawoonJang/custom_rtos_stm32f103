@@ -7,7 +7,6 @@ int main(void)
 {
     developmentVerify();
 
-    // rtos.createTask(ReceiveAndPlayTask, nullptr, 1, 1024);
     rtos.scheduleTask();
 
     while (1)

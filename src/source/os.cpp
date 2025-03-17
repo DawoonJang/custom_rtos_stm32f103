@@ -1,7 +1,7 @@
 #include "os.h"
 #include "device_driver.h"
 
-#include <string.h>
+#include <cstring>
 
 LivingRTOS rtos;
 Task *currentTaskGlobal = nullptr;
@@ -32,12 +32,13 @@ LivingRTOS::LivingRTOS()
         nullptr, PRIO_LOWEST, 128);
 }
 
-int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *para, int prio, int stackSize)
+int LivingRTOS::createTask(void (*ptaskfunc)(void *), void *const para, const short prio,
+                           const unsigned short stackSize)
 {
     return (taskManager.createTask(ptaskfunc, para, prio, stackSize));
 }
 
-void LivingRTOS::deleteTask(int taskID)
+void LivingRTOS::deleteTask(const unsigned char taskID)
 {
     taskManager.deleteTask(taskID);
 }
@@ -77,7 +78,7 @@ void LivingRTOS::increaseTick(void)
     taskManager.increaseTick();
 }
 
-void LivingRTOS::delay(unsigned int ticks)
+void LivingRTOS::delay(const unsigned short ticks)
 {
     taskManager.delayTask(ticks);
 }
@@ -97,7 +98,7 @@ bool LivingRTOS::waitForSignal(int *pdata, int timeout)
     return (stateBackup == BlockedReason::None);
 }
 
-void LivingRTOS::enQueue(int queueID, void *pdata)
+void LivingRTOS::enQueue(const unsigned char queueID, const void *const pdata)
 {
     scopedItrLock lock;
 
@@ -124,7 +125,7 @@ void LivingRTOS::enQueue(int queueID, void *pdata)
     }
 }
 
-bool LivingRTOS::isQueueEmpty(int queueID)
+bool LivingRTOS::isQueueEmpty(const unsigned char queueID)
 {
     if (queueID < 0 || queueID >= MAX_TCB)
     {
@@ -134,7 +135,7 @@ bool LivingRTOS::isQueueEmpty(int queueID)
     return queuePool[queueID].rear == queuePool[queueID].front;
 }
 
-bool LivingRTOS::isQueueFull(int queueID)
+bool LivingRTOS::isQueueFull(const unsigned char queueID)
 {
     if (queueID < 0 || queueID >= MAX_TCB)
     {
@@ -193,7 +194,7 @@ char *LivingRTOS::allocateQueueMemory(int size_arr)
     return ret;
 }
 
-int LivingRTOS::createQueue(int capacity, int elementSize)
+int LivingRTOS::createQueue(const unsigned short capacity, const unsigned short elementSize)
 {
     scopedItrLock lock;
     static int queueIdx;
@@ -220,9 +221,8 @@ int LivingRTOS::createQueue(int capacity, int elementSize)
     return qID;
 }
 
-bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
+bool LivingRTOS::deQueue(const unsigned char queueID, void *const data, const unsigned short timeout)
 {
-
     disable_interrupts();
 
     if (queuePool[queueID].buffer == nullptr)
@@ -269,7 +269,7 @@ bool LivingRTOS::deQueue(int queueID, void *data, int timeout)
     return true;
 }
 
-void LivingRTOS::sendSignal(const int destTaskID, const int signal)
+void LivingRTOS::sendSignal(const unsigned char destTaskID, const char signal)
 {
     scopedItrLock lock;
 
@@ -292,7 +292,7 @@ void LivingRTOS::executeTaskSwitching(void)
 int LivingRTOS::createMutex(void)
 {
     scopedItrLock lock;
-    static int mutexIdx = 0;
+    static char mutexIdx = 0;
 
     if (mutexIdx >= MAX_MUTEX)
     {
@@ -304,12 +304,12 @@ int LivingRTOS::createMutex(void)
     return mutexIdx;
 }
 
-void LivingRTOS::lockMutex(int mutexID)
+void LivingRTOS::lockMutex(const unsigned char mutexID)
 {
     mutexPool[mutexID].lock(taskManager);
 }
 
-void LivingRTOS::unlockMutex(int mutexID)
+void LivingRTOS::unlockMutex(const unsigned char mutexID)
 {
     mutexPool[mutexID].unlock(taskManager);
 }

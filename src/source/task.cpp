@@ -46,7 +46,7 @@ TaskManager::TaskManager() : stack_limit(stack), stackPointer(stack + STACK_SIZE
     }
 }
 
-char *TaskManager::allocateStack(int stackSize)
+char *TaskManager::allocateStack(unsigned short stackSize)
 {
     stackSize = (stackSize + 7) & ~0x7;
 
@@ -61,7 +61,8 @@ char *TaskManager::allocateStack(int stackSize)
     return stackPointer;
 }
 
-int TaskManager::createTask(void (*ptaskfunc)(void *), void *para, int prio, int stackSize)
+int TaskManager::createTask(void (*ptaskfunc)(void *), void *const para, const short prio,
+                            const unsigned short stackSize)
 {
     scopedItrLock lock;
 
@@ -93,7 +94,7 @@ int TaskManager::createTask(void (*ptaskfunc)(void *), void *para, int prio, int
     return ptask->taskID;
 }
 
-void TaskManager::insertTCBToDelayList(const int taskID)
+void TaskManager::insertTCBToDelayList(const unsigned char taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
 
@@ -111,7 +112,7 @@ void TaskManager::insertTCBToDelayList(const int taskID)
     ptask->next->prev = ptask;
 }
 
-void TaskManager::deleteTCBFromDelayList(const int taskID)
+void TaskManager::deleteTCBFromDelayList(const unsigned char taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
 
@@ -130,7 +131,7 @@ void TaskManager::deleteTCBFromDelayList(const int taskID)
     }
 }
 
-void TaskManager::insertTCBToFreeList(const int taskID)
+void TaskManager::insertTCBToFreeList(const unsigned char taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
 
@@ -152,7 +153,7 @@ Task *TaskManager::getTCBFromFreeList(void)
     return ret;
 }
 
-void TaskManager::insertTCBToReadyList(const int taskID)
+void TaskManager::insertTCBToReadyList(const unsigned char taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
     int prio = ptask->prio;
@@ -174,7 +175,7 @@ void TaskManager::insertTCBToReadyList(const int taskID)
     }
 }
 
-void TaskManager::deleteTCBFromReadyList(const int taskID)
+void TaskManager::deleteTCBFromReadyList(const unsigned char taskID)
 {
     Task *ptask = &(tcbPool[taskID]);
 
@@ -195,7 +196,7 @@ void TaskManager::deleteTCBFromReadyList(const int taskID)
     ptask->prev = ptask->next = nullptr;
 }
 
-void TaskManager::deleteTask(int taskID)
+void TaskManager::deleteTask(const unsigned char taskID)
 {
     if (taskID >= MAX_TCB)
         return;
@@ -210,7 +211,7 @@ void TaskManager::deleteTask(int taskID)
     insertTCBToFreeList(taskID);
 }
 
-Task *TaskManager::getTaskPointer(int taskID)
+Task *TaskManager::getTaskPointer(const unsigned char taskID)
 {
     return &(tcbPool[taskID]);
 }
@@ -256,7 +257,8 @@ void TaskManager::increaseTick(void)
     }
 }
 
-void TaskManager::setTaskBlockedStatus(const int taskID, const BlockedReason whyBlocked, const int timeout)
+void TaskManager::setTaskBlockedStatus(const unsigned char taskID, const BlockedReason whyBlocked,
+                                       const unsigned short timeout)
 {
     tcbPool[taskID].state = TaskState::Blocked;
     tcbPool[taskID].blockedReason = whyBlocked;
@@ -275,7 +277,7 @@ void TaskManager::setTaskBlockedStatus(const int taskID, const BlockedReason why
     }
 }
 
-void TaskManager::setTaskReadyFromDelay(const int taskID)
+void TaskManager::setTaskReadyFromDelay(const unsigned char taskID)
 {
     tcbPool[taskID].state = TaskState::Ready;
     tcbPool[taskID].blockedReason = BlockedReason::None;
@@ -283,7 +285,7 @@ void TaskManager::setTaskReadyFromDelay(const int taskID)
     insertTCBToReadyList(taskID);
 }
 
-void TaskManager::delayTask(const unsigned int ticks)
+void TaskManager::delayTask(const unsigned short ticks)
 {
     scopedItrLock lock;
 

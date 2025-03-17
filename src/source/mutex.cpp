@@ -104,7 +104,7 @@ Task *Mutex::getHighestPriorityWaitingTask(TaskManager &taskManager)
     return highestTaskPtr;
 }
 
-void Mutex::changeMutexStatus(bool avail, int ownID)
+void Mutex::changeMutexStatus(const bool avail, const unsigned char ownID)
 {
     available = avail;
     ownerTaskID = ownID;
@@ -120,12 +120,12 @@ int Mutex::getOwnerTaskID(void)
     return ownerTaskID;
 }
 
-void Mutex::insertWaitList(const int taskID)
+void Mutex::insertWaitList(const unsigned char taskID)
 {
     waitTaskList[taskID] = true;
 }
 
-void Mutex::deleteWaitList(const int taskID)
+void Mutex::deleteWaitList(const unsigned char taskID)
 {
     waitTaskList[taskID] = false;
 }

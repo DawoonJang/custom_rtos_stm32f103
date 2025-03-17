@@ -76,24 +76,24 @@ class TaskManager
 
     TaskManager();
 
-    void insertTCBToDelayList(const int taskID);
-    void deleteTCBFromDelayList(const int taskID);
-    void insertTCBToFreeList(const int taskID);
+    void insertTCBToDelayList(const unsigned char taskID);
+    void deleteTCBFromDelayList(const unsigned char taskID);
+    void insertTCBToFreeList(const unsigned char taskID);
     Task *getTCBFromFreeList(void);
-    void insertTCBToReadyList(const int taskID);
-    void deleteTCBFromReadyList(const int taskID);
+    void insertTCBToReadyList(const unsigned char taskID);
+    void deleteTCBFromReadyList(const unsigned char taskID);
 
-    void deleteTask(int taskID);
+    void deleteTask(const unsigned char taskID);
 
-    Task *getTaskPointer(int taskID);
-    char *allocateStack(int size);
+    Task *getTaskPointer(const unsigned char taskID);
+    char *allocateStack(unsigned short size);
     void executeTaskSwitching(void);
-    int createTask(void (*ptaskfunc)(void *), void *para, int prio, int size_stack);
-    void setTaskBlockedStatus(const int taskID, BlockedReason whyBlocked, const int timeout);
-    void setTaskReadyFromDelay(const int taskID);
+    int createTask(void (*ptaskfunc)(void *), void *const para, const short prio, const unsigned short stackSize);
+    void setTaskBlockedStatus(const unsigned char taskID, BlockedReason whyBlocked, const unsigned short timeout);
+    void setTaskReadyFromDelay(const unsigned char taskID);
 
     void increaseTick(void);
-    void delayTask(const unsigned int ticks);
+    void delayTask(const unsigned short ticks);
 };
 
 void ReceiveAndPlayTask(void *para);

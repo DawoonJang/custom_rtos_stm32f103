@@ -34,8 +34,8 @@ class LivingRTOS
 
     void executeTaskSwitching(void);
 
-    int createTask(void (*ptask)(void *), void *para, int prio, int size_stack);
-    void deleteTask(int task_no);
+    int createTask(void (*ptaskfunc)(void *), void *const para, const short prio, const unsigned short stackSize);
+    void deleteTask(const unsigned char taskID);
     void scheduleTask(void);
 
     int timeTick;
@@ -44,13 +44,13 @@ class LivingRTOS
     bool waitForSignal(int *, int);
 
     void increaseTick(void);
-    void delay(unsigned int);
+    void delay(const unsigned short ticks);
 
-    bool deQueue(int, void *, int);
-    void enQueue(int, void *);
-    bool isQueueEmpty(int);
-    bool isQueueFull(int);
-    int createQueue(int, int);
+    bool deQueue(const unsigned char queueID, void *const data, const unsigned short timeout);
+    void enQueue(const unsigned char queueID, const void *const pdata);
+    bool isQueueEmpty(const unsigned char queueID);
+    bool isQueueFull(const unsigned char queueID);
+    int createQueue(const unsigned short capacity, const unsigned short elementSize);
 
     void moveQueuePointer(int, char *&);
     void moveFrontPointerOfQueue(int);
@@ -58,9 +58,9 @@ class LivingRTOS
 
     char *allocateQueueMemory(int size_arr);
 
-    void sendSignal(const int, const int);
+    void sendSignal(const unsigned char destID, const char signal);
 
     int createMutex(void);
-    void lockMutex(int);
-    void unlockMutex(int);
+    void lockMutex(const unsigned char mutexId);
+    void unlockMutex(const unsigned char mutexId);
 };
