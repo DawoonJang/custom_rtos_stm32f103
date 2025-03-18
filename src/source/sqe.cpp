@@ -1,7 +1,14 @@
 #include "sqe.h"
-#include "arm_math.h"
 #include "device_driver.h"
 #include "lcd.h"
+
+#ifdef ARM_MATH
+#include "arm_math.h"
+#define DEFSINE arm_sin_f32
+#else
+#include <math.h>
+#define DEFSINE sin
+#endif
 
 extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
@@ -105,49 +112,49 @@ void signalTask(void *para)
     char prev = 99;
     while (1)
     {
-        if (Uart1_Rx_Data != prev)
+        // if (Uart1_Rx_Data != prev)
+        // {
+        // Uart_Printf("signalIdx changed:%d->%d\n", prev, Uart1_Rx_Data);
+        rtos.lockMutex(signalMemoryMutexID);
+        disable_interrupts();
+        switch (Uart1_Rx_Data)
         {
-            // Uart_Printf("signalIdx changed:%d->%d\n", prev, Uart1_Rx_Data);
-            rtos.lockMutex(signalMemoryMutexID);
-            disable_interrupts();
-            switch (Uart1_Rx_Data)
+        case 1:
+            for (size_t i = 0; i < FFT_LENGTH; ++i)
             {
-            case 1:
-                for (size_t i = 0; i < FFT_LENGTH; ++i)
-                {
-                    pSrc[i] = 0.5 * sin((2 * PI * 1906 * i) / SAMPLE_RATE) +
-                              0.75 * sin((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
-                              2 * sin((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
-                              1.5 * sin((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
-                              sin((2 * PI * 1500 * i) / SAMPLE_RATE);
-                }
-                break;
-
-            case 2:
-                for (size_t i = 0; i < FFT_LENGTH; ++i)
-                {
-                    pSrc[i] = 1;
-                }
-                break;
-
-            case 3:
-                for (size_t i = 0; i < FFT_LENGTH; ++i)
-                {
-                    pSrc[i] = 2;
-                }
-                break;
-
-            default:
-                break;
+                pSrc[i] = 0.5 * DEFSINE((2 * PI * 1906 * i) / SAMPLE_RATE) +
+                          0.75 * DEFSINE((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
+                          2 * DEFSINE((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
+                          1.5 * DEFSINE((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
+                          DEFSINE((2 * PI * 1500 * i) / SAMPLE_RATE);
             }
-            prev = Uart1_Rx_Data;
-            enable_interrupts();
-            rtos.unlockMutex(signalMemoryMutexID);
+            break;
+
+        case 2:
+            for (size_t i = 0; i < FFT_LENGTH; ++i)
+            {
+                pSrc[i] = 1;
+            }
+            break;
+
+        case 3:
+            for (size_t i = 0; i < FFT_LENGTH; ++i)
+            {
+                pSrc[i] = 2;
+            }
+            break;
+
+        default:
+            break;
         }
-        else
-        {
-            ;
-        }
+        prev = Uart1_Rx_Data;
+        enable_interrupts();
+        rtos.unlockMutex(signalMemoryMutexID);
+        // }
+        // else
+        // {
+        //     ;
+        // }
         rtos.delay(500);
     }
 }
@@ -351,7 +358,7 @@ void developmentVerify(void)
     rtos.createTask(signalTask, nullptr, 1, 2048);
     rtos.createTask(canvasGKTask, nullptr, 3, 2048);
     rtos.createTask(dspTask, nullptr, 2, 2048);
-    uartWaitTaskID = rtos.createTask(uartSendTask, nullptr, 4, 1024);
+    // uartWaitTaskID = rtos.createTask(uartSendTask, nullptr, 4, 1024);
 
 #elif defined(TESTCASE3)
 
