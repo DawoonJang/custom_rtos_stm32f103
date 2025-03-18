@@ -1,6 +1,7 @@
-#include "../include/mutex.h"
-#include "../include/device_driver.h"
-#include "../include/task.h"
+#include "mutex.h"
+#include "device_driver.h"
+#include "ltr.h"
+#include "task.h"
 
 extern Task *currentTaskGlobal;
 
@@ -34,7 +35,6 @@ void Mutex::lock(TaskManager &taskManager)
             ownerTask->prio = currentTaskGlobal->prio;
         }
     }
-
     trigger_context_switch();
 }
 

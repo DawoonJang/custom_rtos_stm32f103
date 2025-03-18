@@ -1,5 +1,6 @@
 #include "dsp.h"
 #include <functional>
+
 DSP dsp;
 
 DSP::DSP()
@@ -33,7 +34,7 @@ int DSP::FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, co
     }
 
     /* 4. shuffle input array index to calculate bottom-up style FFT */
-    size_t log2N = (size_t)log2(length);
+    size_t log2N = LOG2N;
     double tmp;
     for (size_t n = 1; n < length - 1; ++n)
     {

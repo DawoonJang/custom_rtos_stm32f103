@@ -1,6 +1,7 @@
-#include "../include/device_driver.h"
-#include "../include/os.h"
-#include "../include/sqe.h"
+#include "device_driver.h"
+#include "ltr.h"
+#include "os.h"
+#include "sqe.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -118,7 +119,6 @@ extern "C"
     void SysTick_Handler(void)
     {
         scopedItrLock lock;
-
         rtos.increaseTick();
         trigger_context_switch();
     }
@@ -128,7 +128,6 @@ extern "C"
 
     void EXTI9_5_IRQHandler(void)
     {
-        scopedItrLock lock;
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
@@ -141,11 +140,9 @@ extern "C"
     char Uart1_Rx_Data;
     void USART1_IRQHandler(void)
     {
-        scopedItrLock lock;
-
-        NVIC_ClearPendingIRQ((IRQn_Type)37);
         Uart1_Rx_In = 1;
         Uart1_Rx_Data = Uart1_Get_Pressed();
+        NVIC_ClearPendingIRQ((IRQn_Type)37);
 
         // rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
     }

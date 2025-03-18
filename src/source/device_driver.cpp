@@ -1,4 +1,5 @@
-#include "../include/device_driver.h"
+#include "device_driver.h"
+#include "ltr.h"
 
 void SystemInit()
 {

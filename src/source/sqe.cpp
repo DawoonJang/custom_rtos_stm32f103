@@ -6,17 +6,17 @@
 extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
 
-volatile char mutexID;
+volatile char signalMemoryMutexID;
 
-float pSrc[FFT_LENGTH];
-float pSrcTemp[FFT_LENGTH];
-float pSrcFiltered[FFT_LENGTH];
+static float pSrc[FFT_LENGTH];
+static float pSrcTemp[FFT_LENGTH];
+static float pSrcFiltered[FFT_LENGTH];
 
-float pDst_real[FFT_LENGTH];
-float pDst_imag[FFT_LENGTH];
+static float pDst_real[FFT_LENGTH];
+static float pDst_imag[FFT_LENGTH];
 
-short magnitude[FFT_HALF_LENGTH];
-int freqs[FFT_HALF_LENGTH];
+static short magnitude[FFT_HALF_LENGTH];
+static short freqs[FFT_HALF_LENGTH];
 
 #ifdef TESTCASE2
 
@@ -84,7 +84,7 @@ void signalTask(void *para)
 {
     while (1)
     {
-        rtos.lockMutex(mutexID);
+        rtos.lockMutex(signalMemoryMutexID);
 
         for (size_t i = 0; i < FFT_LENGTH; ++i)
         {
@@ -97,7 +97,7 @@ void signalTask(void *para)
 
         rtos.delay(500);
 
-        rtos.unlockMutex(mutexID);
+        rtos.unlockMutex(signalMemoryMutexID);
     }
 }
 
@@ -134,7 +134,7 @@ void dspTask(void *para)
 
     while (1)
     {
-        rtos.lockMutex(mutexID);
+        rtos.lockMutex(signalMemoryMutexID);
 
         switch (dsp.filterOption)
         {
@@ -162,7 +162,7 @@ void dspTask(void *para)
             break;
         }
 
-        rtos.unlockMutex(mutexID);
+        rtos.unlockMutex(signalMemoryMutexID);
 
         maxMagnitude = 0;
 

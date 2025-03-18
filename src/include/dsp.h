@@ -8,9 +8,11 @@
 #define SAMPLE_RATE 512
 #define SIGNAL_FREQ 16
 
-#define PI 3.14159265358979f
-#define Q15_SCALE (1 << 15) // 2^15
-#define FLOAT_TO_Q15(x) ((q15_t)((x) * Q15_SCALE))
+#define LOG2N (log2(FFT_LENGTH))
+
+#ifndef PI
+#define PI (3.14159265358979f)
+#endif
 
 enum class FilterOption
 {
