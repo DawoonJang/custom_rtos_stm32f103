@@ -99,11 +99,11 @@ void signalTask(void *para)
             case 1:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
-                              0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
-                              2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
-                              1.5 * sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
-                              sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
+                    pSrc[i] = 0.5 * sin((2 * PI * 1906 * i) / SAMPLE_RATE) +
+                              0.75 * sin((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
+                              2 * sin((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
+                              1.5 * sin((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
+                              sin((2 * PI * 1500 * i) / SAMPLE_RATE);
                 }
                 break;
 
@@ -178,6 +178,7 @@ void draw_line(short *fftData, short maxMagnitude)
         obj.y = templateBoxes[i].y;
         obj.h = templateBoxes[i].h;
         obj.color = BLACK;
+        // Uart_Printf("tp1\n");
         rtos.enQueue(queueBoxes, &obj);
 
         int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
@@ -250,7 +251,7 @@ void dspTask(void *para)
             if (magnitude[i] > maxMagnitude)
                 maxMagnitude = magnitude[i];
 
-            Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
+            // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         draw_line(magnitude, maxMagnitude);
 
@@ -334,7 +335,7 @@ void developmentVerify(void)
     rtos.createTask(signalTask, nullptr, 1, 2048);
     rtos.createTask(canvasGKTask, nullptr, 3, 2048);
     rtos.createTask(dspTask, nullptr, 2, 2048);
-    uartWaitTaskID = rtos.createTask(uartSendTask, nullptr, 1, 1024);
+    uartWaitTaskID = rtos.createTask(uartSendTask, nullptr, 4, 1024);
 
 #elif defined(TESTCASE3)
 

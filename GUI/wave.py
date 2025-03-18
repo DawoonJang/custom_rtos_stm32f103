@@ -13,8 +13,8 @@ import re
 from decimal import Decimal
 
 
-SIGNAL_FREQ = 16
-SAMPLE_RATE = 512
+SIGNAL_FREQ = 2000
+SAMPLE_RATE = 4000
 PI = np.pi
 
 
@@ -174,11 +174,11 @@ class SineWaveGUI:
             
     def generate_signal(self, signalIdx, samples=512):
         i = np.arange(128)
-        signal = (0.5 * np.sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
-                  0.75 * np.sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
-                  2 * np.sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
-                  1.5 * np.sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
-                  np.sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE))
+        signal = (0.5 * np.sin((2 * PI * 1906 * i) / SAMPLE_RATE) +
+            0.75 * np.sin((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
+            2 * np.sin((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
+            1.5 * np.sin((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
+            np.sin((2 * PI * 1500 * i) / SAMPLE_RATE))
         return signal
     
     def on_closing(self):
