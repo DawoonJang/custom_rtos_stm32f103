@@ -89,7 +89,7 @@ void DSP::FIR_Filter(const float *const input, float *const output, const size_t
     {
         size_t j = 0;
 
-        for (; j + 3 < FILTER_ORDER; j += 4) // loop unroll every 4 elements
+        for (; j + 3 < FIR_ORDER; j += 4) // loop unroll every 4 elements
         {
             if (i >= j + 3)
             {
@@ -98,7 +98,7 @@ void DSP::FIR_Filter(const float *const input, float *const output, const size_t
             }
         }
 
-        for (; j < FILTER_ORDER; j++)
+        for (; j < FIR_ORDER; j++)
         {
             if (i >= j)
             {
@@ -108,6 +108,32 @@ void DSP::FIR_Filter(const float *const input, float *const output, const size_t
     }
 }
 
+void DSP::IIR_Filter(const float *const input, float *const output, const size_t length,
+                     const float *const b_coefficients, const float *const a_coefficients)
+{
+    std::fill(output, output + length, 0.0f);
+
+    for (size_t i = 0; i < length; i++)
+    {
+        output[i] = 0.0f;
+
+        for (size_t j = 0; j < IIR_ORDER + 1; j++)
+        {
+            if (i >= j)
+            {
+                output[i] += b_coefficients[j] * input[i - j];
+            }
+        }
+
+        for (size_t k = 1; k < IIR_ORDER + 1; k++)
+        {
+            if (i >= k)
+            {
+                output[i] -= a_coefficients[k] * output[i - k];
+            }
+        }
+    }
+}
 void DSP::changeFilterOption(void)
 {
     switch (filterOption)

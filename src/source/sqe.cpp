@@ -143,18 +143,24 @@ void dspTask(void *para)
             break;
 
         case FilterOption::LPF:
-            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.LPF_Coefficients_20);
+            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_20);
+            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_20, dsp.IIR_LPF_A_Coef_20);
+
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
         case FilterOption::HPF:
-            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_200);
+            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_200);
+            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_200, dsp.IIR_HPF_A_Coef_200);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
         case FilterOption::BPF:
-            dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_200);
-            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_30);
+            // dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_200);
+            // dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_30);
+
+            dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_20, dsp.IIR_HPF_A_Coef_20);
+            dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_200, dsp.IIR_LPF_A_Coef_200);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 

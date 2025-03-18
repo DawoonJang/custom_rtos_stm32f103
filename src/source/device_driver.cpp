@@ -105,3 +105,24 @@ void TIM3_Out_Stop(void)
     Macro_Clear_Bit(TIM3->CR1, 0);
     Macro_Clear_Bit(TIM3->DIER, 0);
 }
+
+void Adc_IN1_Init(void)
+{
+    Macro_Set_Bit(RCC->APB2ENR, 2);
+    Macro_Write_Block(GPIOA->CRL, 0xf, 0x0, 4); // PA1(ADC-IN1) = Analog Input
+
+    Macro_Set_Bit(RCC->APB2ENR, 9);             // ADC1 전원 공급
+    Macro_Write_Block(RCC->CFGR, 0x3, 0x2, 14); // ADC1 CLOCK = 12MHz (PCLK2/6)
+
+    Macro_Write_Block(ADC1->SMPR2, 0x7, 0x7, 3); // Clock Configuration of CH1 = 239.5 Cycles
+    Macro_Write_Block(ADC1->SQR1, 0xF, 0x0, 20); // 변환할 채널 개수 = 1개
+    Macro_Write_Block(ADC1->SQR3, 0x1F, 1, 0);   // 변환할 첫 번째 채널 = CH1
+    Macro_Write_Block(ADC1->CR2, 0x7, 0x7, 17);  // 외부 트리거 = 소프트웨어 트리거
+    Macro_Set_Bit(ADC1->CR2, 0);                 // ADC ON
+}
+
+void Adc_Start(void)
+{
+    Macro_Set_Bit(ADC1->CR2, 20); // EXT Trigger Start
+    Macro_Set_Bit(ADC1->CR2, 22); // ADC Start
+}
