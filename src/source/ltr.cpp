@@ -3,7 +3,7 @@
 
 scopedItrLock::scopedItrLock()
 {
-#ifdef DEBUGDEBUG
+#ifdef DEBUG_ITR
     InterruptManager::disable_interrupts();
 #else
     disable_interrupts();
@@ -12,7 +12,7 @@ scopedItrLock::scopedItrLock()
 
 scopedItrLock::~scopedItrLock()
 {
-#ifdef DEBUGDEBUG
+#ifdef DEBUG_ITR
     InterruptManager::enable_interrupts();
 #else
     enable_interrupts();

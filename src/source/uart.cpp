@@ -130,7 +130,7 @@ extern "C"
 
     void Uart1_Printf(const char *fmt, ...)
     {
-#ifdef DEBUGDEBUG
+#ifdef DEBUG_PRINT
         va_list ap;
         char string[256];
 

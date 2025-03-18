@@ -88,11 +88,11 @@ void signalTask(void *para)
 
         for (size_t i = 0; i < FFT_LENGTH; ++i)
         {
-            pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
-                      0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
-                      2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
-                      1.5 * sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
-                      sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
+            pSrc[i] = 0.5 * arm_sin_f32((2 * PI * 1906 * i) / SAMPLE_RATE) +
+                      0.75 * arm_sin_f32((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
+                      2 * arm_sin_f32((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
+                      1.5 * arm_sin_f32((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
+                      arm_sin_f32((2 * PI * 1500 * i) / SAMPLE_RATE);
         }
 
         rtos.delay(500);
@@ -134,6 +134,7 @@ void dspTask(void *para)
 
     while (1)
     {
+
         rtos.lockMutex(signalMemoryMutexID);
 
         switch (dsp.filterOption)
@@ -143,24 +144,23 @@ void dspTask(void *para)
             break;
 
         case FilterOption::LPF:
-            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_20);
-            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_20, dsp.IIR_LPF_A_Coef_20);
-
+            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_575);
+            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_575, dsp.IIR_LPF_A_Coef_575);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
         case FilterOption::HPF:
-            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_200);
-            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_200, dsp.IIR_HPF_A_Coef_200);
+            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_1200);
+            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_1200, dsp.IIR_HPF_A_Coef_1200);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
         case FilterOption::BPF:
-            // dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_200);
-            // dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_30);
+            // dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_1200);
+            // dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_575);
 
-            dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_20, dsp.IIR_HPF_A_Coef_20);
-            dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_200, dsp.IIR_LPF_A_Coef_200);
+            dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_575, dsp.IIR_HPF_A_Coef_575);
+            dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_1200, dsp.IIR_LPF_A_Coef_1200);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
             break;
 
@@ -180,7 +180,7 @@ void dspTask(void *para)
             if (magnitude[i] > maxMagnitude)
                 maxMagnitude = magnitude[i];
 
-            // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
+            Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         draw_line(magnitude, maxMagnitude);
 
@@ -261,9 +261,9 @@ void developmentVerify(void)
 {
 #ifdef TESTCASE2
 
-    rtos.createTask(signalTask, nullptr, 3, 2048);
-    rtos.createTask(canvasGKTask, nullptr, 2, 2048);
-    rtos.createTask(dspTask, nullptr, 1, 2048);
+    rtos.createTask(signalTask, nullptr, 1, 2048);
+    rtos.createTask(canvasGKTask, nullptr, 3, 2048);
+    rtos.createTask(dspTask, nullptr, 2, 2048);
 
 #elif defined(TESTCASE3)
 
