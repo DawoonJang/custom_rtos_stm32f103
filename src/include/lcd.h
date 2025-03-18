@@ -2,12 +2,38 @@
 #include "dsp.h"
 
 #define BLACK 0x0000
-#define WHITE 0xffff
-#define BLUE 0x001f
-#define GREEN 0x07e0
-#define RED 0xf800
-#define YELLOW 0xffe0
-#define VIOLET 0xf81f
+#define WHITE 0xFFFF
+#define GRAY 0x8410       // 중간 회색
+#define DARK_GRAY 0x4208  // 어두운 회색
+#define LIGHT_GRAY 0xC618 // 밝은 회색
+
+#define RED 0xF800
+#define DARK_RED 0x8000  // 어두운 빨강
+#define LIGHT_RED 0xF810 // 밝은 빨강
+
+#define GREEN 0x07E0
+#define DARK_GREEN 0x03E0  // 어두운 초록
+#define LIGHT_GREEN 0x87F0 // 밝은 초록
+
+#define BLUE 0x001F
+#define DARK_BLUE 0x000F  // 어두운 파랑
+#define LIGHT_BLUE 0x051F // 밝은 파랑
+
+#define YELLOW 0xFFE0
+#define GOLD 0xFEA0   // 황금색
+#define ORANGE 0xFD20 // 주황
+
+#define CYAN 0x07FF       // 청록색
+#define DARK_CYAN 0x03EF  // 어두운 청록
+#define LIGHT_CYAN 0x67FF // 밝은 청록
+
+#define MAGENTA 0xF81F // 자홍색
+#define PINK 0xF97F    // 연한 분홍
+#define PURPLE 0x801F  // 보라
+#define VIOLET 0x915F  // 연보라
+
+#define BROWN 0xA145 // 갈색
+#define BEIGE 0xF7BB // 베이지
 
 #define BAR_WIDTH 3
 #define BAR_SPACING 0

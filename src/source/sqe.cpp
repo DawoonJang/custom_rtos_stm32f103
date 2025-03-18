@@ -38,21 +38,37 @@ void init_templateBoxes()
         templateBoxes[i].x = i * barWidth;
         templateBoxes[i].w = barWidth;
 
-        if (i < FFT_HALF_LENGTH / 4)
+        if (i < FFT_HALF_LENGTH / 8)
         {
-            templateBoxes[i].color = RED;
+            templateBoxes[i].color = DARK_BLUE; // 짙은 파랑
         }
-        else if (FFT_HALF_LENGTH / 4 <= i && i < FFT_HALF_LENGTH / 2)
+        else if (i < FFT_HALF_LENGTH * 2 / 8)
         {
-            templateBoxes[i].color = GREEN;
+            templateBoxes[i].color = BLUE; // 파랑
         }
-        else if (FFT_HALF_LENGTH / 2 <= i && i < FFT_HALF_LENGTH * 3 / 4)
+        else if (i < FFT_HALF_LENGTH * 3 / 8)
         {
-            templateBoxes[i].color = WHITE;
+            templateBoxes[i].color = CYAN; // 청록
+        }
+        else if (i < FFT_HALF_LENGTH * 4 / 8)
+        {
+            templateBoxes[i].color = GREEN; // 초록
+        }
+        else if (i < FFT_HALF_LENGTH * 5 / 8)
+        {
+            templateBoxes[i].color = BROWN; // 노랑
+        }
+        else if (i < FFT_HALF_LENGTH * 6 / 8)
+        {
+            templateBoxes[i].color = BEIGE; // 주황
+        }
+        else if (i < FFT_HALF_LENGTH * 7 / 8)
+        {
+            templateBoxes[i].color = RED; // 빨강
         }
         else
         {
-            templateBoxes[i].color = VIOLET;
+            templateBoxes[i].color = MAGENTA; // 자홍
         }
     }
 }
@@ -180,7 +196,7 @@ void dspTask(void *para)
             if (magnitude[i] > maxMagnitude)
                 maxMagnitude = magnitude[i];
 
-            Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
+            // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         draw_line(magnitude, maxMagnitude);
 

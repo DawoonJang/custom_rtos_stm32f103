@@ -32,7 +32,7 @@ extern "C"
 #endif /* __cplusplus */
 
     unsigned short color_set[] = {RED, GREEN, BLUE};
-    unsigned int font_set[BAND_CHAR_NUM] = {YELLOW, GREEN, BLUE, VIOLET};
+    unsigned int font_set[BAND_CHAR_NUM] = {LIGHT_CYAN, LIGHT_GREEN, LIGHT_BLUE, LIGHT_RED};
     unsigned char band_char[BAND_CHAR_NUM] = {'N', 'L', 'H', 'G'};
 
     void Lcd_Write_Reg(unsigned char Lcd_Reg, unsigned short Lcd_RegValue);
