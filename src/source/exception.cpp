@@ -1,7 +1,6 @@
-#include "device_driver.h"
-#include "ltr.h"
-#include "os.h"
-#include "sqe.h"
+#include "../include/device_driver.h"
+#include "../include/os.h"
+#include "../include/sqe.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -119,32 +118,41 @@ extern "C"
     void SysTick_Handler(void)
     {
         scopedItrLock lock;
+
         rtos.increaseTick();
         trigger_context_switch();
     }
 
     volatile int keyValue;
+    extern volatile int keyWaitTaskID;
     volatile bool keyInputFlag;
 
     void EXTI9_5_IRQHandler(void)
     {
+        scopedItrLock lock;
         keyValue = Macro_Extract_Area(EXTI->PR, 0x3, 6);
         EXTI->PR = 0x3 << 6;
         NVIC_ClearPendingIRQ((IRQn_Type)23);
 
         keyInputFlag = 1;
         dsp.changeFilterOption();
+        // rtos.sendSignal(keyWaitTaskID, keyValue);
     }
 
     volatile int Uart1_Rx_In = 0;
-    char Uart1_Rx_Data;
+    volatile char Uart1_Rx_Data;
+    extern volatile char queueSignal;
     void USART1_IRQHandler(void)
     {
-        Uart1_Rx_In = 1;
-        Uart1_Rx_Data = Uart1_Get_Pressed();
-        NVIC_ClearPendingIRQ((IRQn_Type)37);
+        scopedItrLock lock;
 
-        // rtos.enQueue(uartQueueID, &Uart1_Rx_Data);
+        Uart1_Rx_In = 1;
+        Uart1_Rx_Data = (char)USART1->DR;
+        NVIC_ClearPendingIRQ((IRQn_Type)37);
+        // Uart_Printf("tp:1 %d\n", Uart1_Rx_Data);
+
+        // rtos.enQueue(queueSignal, &Uart1_Rx_Data);
+        // Uart_Printf("tp:2 %d\n", Uart1_Rx_Data);
     }
 
 #ifdef __cplusplus

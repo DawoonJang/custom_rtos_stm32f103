@@ -56,11 +56,11 @@ extern "C"
         }
     }
 
-    void ftos(char *str, double fl)
+    void ftos(char *str, float fl)
     {
         char buf[20];
         long long i = (long long)fl; // 정수 부분
-        double f = fl - i;           // 소수 부분
+        float f = fl - i;            // 소수 부분
         int idx = 0;
 
         // 음수 처리
@@ -112,8 +112,7 @@ extern "C"
 
         str[idx] = '\0'; // 문자열 종료
     }
-
-    void Uart1_PrintStr(double *real, double *imag, size_t length)
+    void Uart1_PrintStr2(float *real, float *imag, size_t length)
     {
         char real_char[20];
         char imag_char[20];
@@ -123,14 +122,27 @@ extern "C"
             ftos(real_char, real[i]);
             ftos(imag_char, imag[i]);
 
-            Uart_Printf("%s+j%s\n", real_char, imag_char);
+            Uart_Printf("%s\n", real_char);
+            // Uart_Printf("%s+j%s\n", real_char, imag_char);
         }
-        Uart1_Printf("\n");
+        // Uart1_Printf("\n");
+    }
+
+    void Uart1_PrintFloat(float *data, size_t length)
+    {
+        char float_char[10];
+
+        for (size_t i = 0; i < length; i++)
+        {
+            ftos(float_char, data[i]);
+
+            Uart_Printf("%s\n", float_char);
+        }
     }
 
     void Uart1_Printf(const char *fmt, ...)
     {
-#ifdef DEBUGDEBUG
+#ifdef DEBUG
         va_list ap;
         char string[256];
 

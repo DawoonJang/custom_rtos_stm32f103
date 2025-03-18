@@ -6,17 +6,18 @@
 extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
 
-volatile char signalMemoryMutexID;
+volatile int uartWaitTaskID;
+volatile char mutexID;
 
-static float pSrc[FFT_LENGTH];
-static float pSrcTemp[FFT_LENGTH];
-static float pSrcFiltered[FFT_LENGTH];
+float pSrc[FFT_LENGTH];
+float pSrcTemp[FFT_LENGTH];
+float pSrcFiltered[FFT_LENGTH];
 
-static float pDst_real[FFT_LENGTH];
-static float pDst_imag[FFT_LENGTH];
+float pDst_real[FFT_LENGTH];
+float pDst_imag[FFT_LENGTH];
 
-static short magnitude[FFT_HALF_LENGTH];
-static short freqs[FFT_HALF_LENGTH];
+short magnitude[FFT_HALF_LENGTH];
+int freqs[FFT_HALF_LENGTH];
 
 #ifdef TESTCASE2
 
@@ -28,7 +29,6 @@ struct Boxes
 
 Boxes templateBoxes[FFT_HALF_LENGTH];
 volatile char queueBoxes;
-volatile bool queueSignal;
 
 void init_templateBoxes()
 {
@@ -67,6 +67,7 @@ void canvasGKTask(void *para)
 
     while (1)
     {
+        disable_interrupts();
         if (rtos.deQueue(queueBoxes, &obj, 100))
         {
             Lcd_Draw_Box(obj.x, obj.y, obj.w, obj.h, obj.color);
@@ -77,27 +78,92 @@ void canvasGKTask(void *para)
             keyInputFlag = 0;
             Lcd_Draw_Font(dsp.filterOption);
         }
+        enable_interrupts();
     }
 }
+extern volatile char Uart1_Rx_Data;
 
 void signalTask(void *para)
 {
+    char prev = 99;
     while (1)
     {
-        rtos.lockMutex(signalMemoryMutexID);
-
-        for (size_t i = 0; i < FFT_LENGTH; ++i)
+        if (Uart1_Rx_Data != prev)
         {
-            pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
-                      0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
-                      2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
-                      1.5 * sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
-                      sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
+            // Uart_Printf("signalIdx changed:%d->%d\n", prev, Uart1_Rx_Data);
+            rtos.lockMutex(mutexID);
+            disable_interrupts();
+            switch (Uart1_Rx_Data)
+            {
+            case 1:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 0.5 * sin((2 * PI * SIGNAL_FREQ * i) / SAMPLE_RATE) +
+                              0.75 * sin((2 * PI * SIGNAL_FREQ * 4 * i) / SAMPLE_RATE) +
+                              2 * sin((2 * PI * SIGNAL_FREQ * 6 * i) / SAMPLE_RATE) +
+                              1.5 * sin((2 * PI * SIGNAL_FREQ * 10 * i) / SAMPLE_RATE) +
+                              sin((2 * PI * SIGNAL_FREQ * 14 * i) / SAMPLE_RATE);
+                }
+                break;
+
+            case 2:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 1;
+                }
+                break;
+
+            case 3:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 2;
+                }
+                break;
+
+            default:
+                break;
+            }
+            prev = Uart1_Rx_Data;
+            enable_interrupts();
+            rtos.unlockMutex(mutexID);
         }
-
+        else
+        {
+            ;
+        }
         rtos.delay(500);
+    }
+}
 
-        rtos.unlockMutex(signalMemoryMutexID);
+void uartSendTask(void *para)
+{
+    int sendFlag = 0;
+    int prevSig = 0;
+    while (1)
+    {
+        if (rtos.waitForSignal(&sendFlag, 5000) == true)
+        {
+            if (prevSig != sendFlag)
+            {
+                rtos.lockMutex(mutexID);
+
+                Uart_Printf("STX\n");
+                systemDelay(5);
+                Uart_PrintFloat(pSrcFiltered, FFT_LENGTH);
+                systemDelay(5);
+                Uart_Printf("ETX\n");
+                rtos.unlockMutex(mutexID);
+
+                prevSig = sendFlag;
+            }
+            else
+            {
+                ;
+            }
+        }
+        else
+        {
+        }
     }
 }
 
@@ -134,7 +200,7 @@ void dspTask(void *para)
 
     while (1)
     {
-        rtos.lockMutex(signalMemoryMutexID);
+        rtos.lockMutex(mutexID);
 
         switch (dsp.filterOption)
         {
@@ -143,32 +209,29 @@ void dspTask(void *para)
             break;
 
         case FilterOption::LPF:
-            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_20);
-            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_20, dsp.IIR_LPF_A_Coef_20);
-
+            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.LPF_Coefficients_20);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
+            rtos.sendSignal(uartWaitTaskID, 1);
             break;
 
         case FilterOption::HPF:
-            // dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_200);
-            dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_200, dsp.IIR_HPF_A_Coef_200);
+            dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_200);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
+            rtos.sendSignal(uartWaitTaskID, 2);
             break;
 
         case FilterOption::BPF:
-            // dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_200);
-            // dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_30);
-
-            dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_20, dsp.IIR_HPF_A_Coef_20);
-            dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_200, dsp.IIR_LPF_A_Coef_200);
+            dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.LPF_Coefficients_200);
+            dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.HPF_Coefficients_30);
             dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
+            rtos.sendSignal(uartWaitTaskID, 3);
             break;
 
         default:
             break;
         }
 
-        rtos.unlockMutex(signalMemoryMutexID);
+        rtos.unlockMutex(mutexID);
 
         maxMagnitude = 0;
 
@@ -264,6 +327,7 @@ void developmentVerify(void)
     rtos.createTask(signalTask, nullptr, 3, 2048);
     rtos.createTask(canvasGKTask, nullptr, 2, 2048);
     rtos.createTask(dspTask, nullptr, 1, 2048);
+    uartWaitTaskID = rtos.createTask(uartSendTask, nullptr, 1, 1024);
 
 #elif defined(TESTCASE3)
 
