@@ -1,5 +1,6 @@
 #include "os.h"
 #include "device_driver.h"
+#include "ltr.h"
 
 #include <cstring>
 

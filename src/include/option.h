@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG
+// #define DEBUGDEBUG
 
 // #define TESTCASE1
 #define TESTCASE2

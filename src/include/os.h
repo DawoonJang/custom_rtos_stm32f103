@@ -24,9 +24,9 @@ class LivingRTOS
 {
   private:
     Queue queuePool[MAX_QUEUE];
-    char queueStack[QUEUE_STACK_SIZE] __attribute__((__aligned__(8)));
-
     Mutex mutexPool[MAX_MUTEX];
+
+    char queueStack[QUEUE_STACK_SIZE] __attribute__((__aligned__(8)));
 
   public:
     LivingRTOS();

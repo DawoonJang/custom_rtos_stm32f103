@@ -1,5 +1,6 @@
-#include "../include/task.h"
-#include "../include/device_driver.h"
+#include "task.h"
+#include "device_driver.h"
+#include "ltr.h"
 
 // void ReceiveAndPlayTask(void *para)
 // {
@@ -235,7 +236,7 @@ void TaskManager::executeTaskSwitching(void)
 
 void TaskManager::increaseTick(void)
 {
-    scopedItrLock lock;
+    // scopedItrLock lock;
 
     Task *ptask = delayList;
 
@@ -287,7 +288,7 @@ void TaskManager::setTaskReadyFromDelay(const unsigned char taskID)
 
 void TaskManager::delayTask(const unsigned short ticks)
 {
-    scopedItrLock lock;
+    // scopedItrLock lock;
 
     setTaskBlockedStatus(currentTaskGlobal->taskID, BlockedReason::Sleep, ticks);
 

@@ -6,7 +6,6 @@
 #include "os.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx.h"
-#include <queue>
 
 // Uart.c
 #define Uart_Init Uart1_Init
@@ -75,19 +74,7 @@ extern "C"
 
     // lcd.c
     extern void Lcd_Init(void);
-    
+
 #ifdef __cplusplus
 }
 #endif
-
-struct scopedItrLock
-{
-    scopedItrLock()
-    {
-        disable_interrupts();
-    }
-    ~scopedItrLock()
-    {
-        enable_interrupts();
-    }
-};
