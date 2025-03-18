@@ -6,14 +6,12 @@
 #include "os.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx.h"
-#include <queue>
 
 // Uart.c
 #define Uart_Init Uart1_Init
 #define Uart_Send_Byte Uart1_Send_Byte
 #define Uart_Send_String Uart1_Send_String
 #define Uart_Printf Uart1_Printf
-#define Uart_PrintFloat Uart1_PrintFloat
 
 static inline void disable_interrupts(void)
 {
@@ -52,8 +50,6 @@ extern "C"
     extern void Uart1_Get_String(char *string);
     extern int Uart1_Get_Int_Num(void);
     extern void Uart1_RX_Interrupt_Enable(int en);
-    extern void Uart1_PrintStr2(float *real, float *imag, size_t length);
-    extern void Uart1_PrintFloat(float *data, size_t length);
 
     // Clock.c
     extern void ClockInit(void);
@@ -78,19 +74,7 @@ extern "C"
 
     // lcd.c
     extern void Lcd_Init(void);
-    
+
 #ifdef __cplusplus
 }
 #endif
-
-struct scopedItrLock
-{
-    scopedItrLock()
-    {
-        disable_interrupts();
-    }
-    ~scopedItrLock()
-    {
-        enable_interrupts();
-    }
-};
