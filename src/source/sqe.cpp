@@ -5,9 +5,13 @@
 #ifdef ARM_MATH
 #include "arm_math.h"
 #define DEFSINE arm_sin_f32
+#define DEFSQRT arm_sqrt_q15
+
 #else
 #include <math.h>
 #define DEFSINE sin
+#define DEFSQRT sqrt
+
 #endif
 
 extern volatile int Uart1_Rx_In;
@@ -110,6 +114,7 @@ extern volatile char Uart1_Rx_Data;
 void signalTask(void *para)
 {
     char prev = 99;
+    Uart1_Rx_Data = 1;
     while (1)
     {
         // if (Uart1_Rx_Data != prev)
@@ -201,14 +206,15 @@ void draw_line(short *fftData, short maxMagnitude)
         obj.y = templateBoxes[i].y;
         obj.h = templateBoxes[i].h;
         obj.color = BLACK;
-        // Uart_Printf("tp1\n");
         rtos.enQueue(queueBoxes, &obj);
 
         int normalizedHeight = Y_MIN + ((Y_MAX - Y_MIN) * fftData[i]) / maxMagnitude;
+        normalizedHeight = (normalizedHeight < 10) ? 1 : normalizedHeight;
+
         obj.x = templateBoxes[i].x;
         obj.w = templateBoxes[i].w;
         obj.y = Y_MAX - normalizedHeight;
-        obj.h = normalizedHeight + 1;
+        obj.h = normalizedHeight;
         obj.color = templateBoxes[i].color;
 
         templateBoxes[i].y = obj.y;
@@ -227,6 +233,7 @@ void dspTask(void *para)
     {
 
         rtos.lockMutex(signalMemoryMutexID);
+        disable_interrupts();
 
         switch (dsp.filterOption)
         {
@@ -269,15 +276,20 @@ void dspTask(void *para)
         for (size_t i = 0; i < FFT_HALF_LENGTH; i++)
         {
             freqs[i] = (double)i * SAMPLE_RATE / FFT_LENGTH;
-            magnitude[i] = sqrt(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
+#ifdef ARM_MATH
+            DEFSQRT(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i], &magnitude[i]);
 
+#else
+            magnitude[i] = DEFSQRT(pDst_real[i] * pDst_real[i] + pDst_imag[i] * pDst_imag[i]);
+
+#endif
             if (magnitude[i] > maxMagnitude)
                 maxMagnitude = magnitude[i];
 
             // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
         }
         draw_line(magnitude, maxMagnitude);
-
+        enable_interrupts();
         rtos.delay(300);
     }
 }

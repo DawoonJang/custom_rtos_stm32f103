@@ -40,6 +40,7 @@ extern "C"
     void Lcd_WR_REG(unsigned char data);
     void Lcd_WR_DATA(unsigned char data);
     void Lcd_Set_Display_Mode(int mode);
+    void Lcd_Draw_Logo(int xs, int ys, int w, int h);
 
     typedef struct
     {
@@ -412,6 +413,8 @@ static unsigned char _SPI1_Read_Byte(void)
         _Delay(300);
 
         Lcd_LED_ON();
+
+        Lcd_Draw_Logo(0, 140, 320, LOGO_HEIGHT);
     }
 
     void Lcd_Put_Pixel(unsigned short x, unsigned short y, unsigned short color)
@@ -553,6 +556,41 @@ static unsigned char _SPI1_Read_Byte(void)
         Lcd_Draw_Box(0, 0, FONT_POS, FONT_POS, BLACK);
         Lcd_Draw_Char(FONT_POS / 2, FONT_POS / 2, band_char[(unsigned char)filterOptions],
                       font_set[(unsigned char)filterOptions]);
+    }
+
+    void Lcd_Draw_Logo(int xs, int ys, int w, int h)
+    {
+        int xe = xs + w - 1;
+        int ye = ys + h - 1;
+
+        if (xe >= 320)
+            xe = 319;
+        if (ye >= 240)
+            ye = 239;
+
+        Lcd_Set_Windows(xs, ys, xe, ye);
+
+        Lcd_CS_EN();
+        Lcd_RS_REG();
+
+        int index = 0;
+        for (int y = ys; y <= ye; y++)
+        {
+            for (int x = xs; x <= xe; x++)
+            {
+                if (index >= 62720)
+                    break; // 배열 크기 초과 방지
+
+                unsigned char c0 = LogoArray[index];
+                unsigned char c1 = LogoArray[index + 1];
+                index += 2;
+
+                _SPI1_Write_Byte(c0);
+                _SPI1_Write_Byte(c1);
+            }
+        }
+
+        Lcd_CS_DIS();
     }
 
 #ifdef __cplusplus
