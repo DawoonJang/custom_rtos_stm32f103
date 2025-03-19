@@ -32,6 +32,27 @@ volatile char queueBoxes;
 volatile bool queueSignal;
 volatile char targetSignal;
 
+void makeSomeNoise(void)
+{
+    // TIM3_Out_Freq_Generation(2080); // 도
+    // systemDelay(100);
+    // TIM3_Out_Freq_Generation(3040); // 솔
+    // systemDelay(100);
+    // TIM3_Out_Freq_Generation(2080); // 도
+    // systemDelay(100);
+
+    TIM3_Out_Freq_Generation(2080); // 도
+    systemDelay(100);
+    TIM3_Out_Freq_Generation(3840); // 시
+    systemDelay(100);
+    TIM3_Out_Freq_Generation(3040); // 솔
+    systemDelay(100);
+    TIM3_Out_Freq_Generation(2640); // 미
+    systemDelay(100);
+
+    TIM3_Out_Stop();
+}
+
 void init_templateBoxes()
 {
     unsigned short barWidth = MAX_WIDTH / (FFT_HALF_LENGTH);
@@ -121,10 +142,8 @@ void signalTask(void *para)
             case 1:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = 0.5 * sin(2 * PI * 1906 * i / SAMPLE_RATE) +
-                              0.75 * sin(2 * PI * 1200 * i / SAMPLE_RATE) +
-                              1.2 * cos(2 * PI * 800 * i / SAMPLE_RATE) +
-                              1.5 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
+                    pSrc[i] = 0.5 * sin(2 * PI * 1906 * i / SAMPLE_RATE) + 0.75 * sin(2 * PI * 1200 * i / SAMPLE_RATE) +
+                              1.2 * cos(2 * PI * 800 * i / SAMPLE_RATE) + 1.5 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
                               0.8 * cos(2 * PI * 300 * i / SAMPLE_RATE);
                 }
                 break;
@@ -132,10 +151,8 @@ void signalTask(void *para)
             case 2:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = sin(2 * PI * 2100 * i / SAMPLE_RATE) +
-                              0.9 * cos(2 * PI * 1400 * i / SAMPLE_RATE) +
-                              0.7 * sin(2 * PI * 900 * i / SAMPLE_RATE) +
-                              1.3 * cos(2 * PI * 600 * i / SAMPLE_RATE) +
+                    pSrc[i] = sin(2 * PI * 2100 * i / SAMPLE_RATE) + 0.9 * cos(2 * PI * 1400 * i / SAMPLE_RATE) +
+                              0.7 * sin(2 * PI * 900 * i / SAMPLE_RATE) + 1.3 * cos(2 * PI * 600 * i / SAMPLE_RATE) +
                               1.1 * sin(2 * PI * 400 * i / SAMPLE_RATE);
                 }
                 break;
@@ -143,10 +160,8 @@ void signalTask(void *para)
             case 3:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = cos(2 * PI * 1600 * i / SAMPLE_RATE) +
-                              1.2 * sin(2 * PI * 1300 * i / SAMPLE_RATE) +
-                              0.6 * cos(2 * PI * 700 * i / SAMPLE_RATE) +
-                              1.4 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
+                    pSrc[i] = cos(2 * PI * 1600 * i / SAMPLE_RATE) + 1.2 * sin(2 * PI * 1300 * i / SAMPLE_RATE) +
+                              0.6 * cos(2 * PI * 700 * i / SAMPLE_RATE) + 1.4 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
                               0.9 * cos(2 * PI * 200 * i / SAMPLE_RATE);
                 }
                 break;
@@ -181,6 +196,7 @@ void uartSendTask(void *para)
             if (prevSignal != filterBand)
             {
                 rtos.lockMutex(signalMemoryMutexID);
+#ifdef WITH_SIGNAL
 
                 Uart_Printf("S\n");
                 Uart_Printf("%d\n", filterBand);
@@ -195,6 +211,7 @@ void uartSendTask(void *para)
                 }
                 systemDelay(5);
                 Uart_Printf("E\n");
+#endif
                 rtos.unlockMutex(signalMemoryMutexID);
 
                 prevSignal = filterBand;
@@ -243,60 +260,66 @@ void dspTask(void *para)
 
     rtos.delay(10);
 
+#ifndef WITH_SIGNAL
+    dsp.filterType = FIR;
+#endif
+
     while (1)
     {
         disable_interrupts();
-        if (dsp.isFilterOptionChange() || dsp.filterType != 3)
+        if (dsp.isFilterOptionChange())
         {
             rtos.lockMutex(signalMemoryMutexID);
+            makeSomeNoise();
 
             switch (dsp.filterOption)
             {
             case FilterOption::Normal:
                 dsp.FFT(pSrc, pDst_real, pDst_imag, FFT_LENGTH);
                 rtos.sendSignal(uartWaitTaskID, 0);
-            break;
+                break;
 
             case FilterOption::LPF:
                 if (dsp.filterType == FIR)
-            {
-                dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_575);
-            }
-            else if (dsp.filterType == IIR)
-            {
+                {
+                    dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_LPF_Coefficients_575);
+                }
+                else if (dsp.filterType == IIR)
+                {
                     dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_575, dsp.IIR_LPF_A_Coef_575);
-            }
+                }
                 dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
                 rtos.sendSignal(uartWaitTaskID, 1);
                 break;
 
-        case FilterOption::HPF:
-            if (dsp.filterType == FIR)
-            {
-                dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_1200);
-            }
-            else if (dsp.filterType == IIR)
-            {
-                dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_1200, dsp.IIR_HPF_A_Coef_1200);
-            }
-            dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
-            rtos.sendSignal(uartWaitTaskID, 2);
-            break;
+            case FilterOption::HPF:
+                if (dsp.filterType == FIR)
+                {
+                    dsp.FIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_1200);
+                }
+                else if (dsp.filterType == IIR)
+                {
+                    dsp.IIR_Filter(pSrc, pSrcFiltered, FFT_LENGTH, dsp.IIR_HPF_B_Coef_1200, dsp.IIR_HPF_A_Coef_1200);
+                }
+                dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
+                rtos.sendSignal(uartWaitTaskID, 2);
+                break;
 
-        case FilterOption::BPF:
-            if (dsp.filterType == FIR)
-            {
-                dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_1200);
-                dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_575);
-            }
-            else if (dsp.filterType == IIR)
-            {
-                dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_575, dsp.IIR_HPF_A_Coef_575);
-                dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_1200, dsp.IIR_LPF_A_Coef_1200);
-            }
-            dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
-            rtos.sendSignal(uartWaitTaskID, 3);
-            break;
+            case FilterOption::BPF:
+                if (dsp.filterType == FIR)
+                {
+                    dsp.FIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.FIR_LPF_Coefficients_1200);
+                    dsp.FIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.FIR_HPF_Coefficients_575);
+                }
+                else if (dsp.filterType == IIR)
+                {
+                    dsp.IIR_Filter(pSrc, pSrcTemp, FFT_LENGTH, dsp.IIR_HPF_B_Coef_575, dsp.IIR_HPF_A_Coef_575);
+                    dsp.IIR_Filter(pSrcTemp, pSrcFiltered, FFT_LENGTH, dsp.IIR_LPF_B_Coef_1200,
+                                   dsp.IIR_LPF_A_Coef_1200);
+                }
+                dsp.FFT(pSrcFiltered, pDst_real, pDst_imag, FFT_LENGTH);
+                rtos.sendSignal(uartWaitTaskID, 3);
+                break;
 
             default:
                 break;
@@ -328,7 +351,6 @@ void dspTask(void *para)
             ;
         }
         enable_interrupts();
-        TIM3_Out_Stop();
         rtos.delay(300);
     }
 }
