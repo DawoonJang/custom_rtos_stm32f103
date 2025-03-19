@@ -36,6 +36,13 @@ enum class FilterOption
     BPF
 };
 
+enum
+{
+    None,
+    FIR,
+    IIR
+};
+
 class DSP
 {
   private:
@@ -49,6 +56,7 @@ class DSP
 
     FilterOption filterOption;
     FilterOption prevfilterOption;
+    char filterType;
 
     int FFT(const float *pSrc, float *const pDstReal, float *const pDstImag, const size_t length);
     void FIR_Filter(const float *const input, float *const output, const size_t length,
@@ -60,6 +68,7 @@ class DSP
     void changeFilterOption(void);
 
     bool isFilterOptionChange(void);
+    void changeFilterType(char val);
 
     const float FIR_LPF_Coefficients_575[FIR_ORDER] = {
         0.0015,  0.0016,  0.0002,  -0.0028, -0.0056, -0.0040, 0.0044, 0.0153,  0.0173,  0.0011,  // 1 ~ 10

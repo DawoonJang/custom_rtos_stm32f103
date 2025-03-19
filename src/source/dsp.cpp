@@ -3,7 +3,7 @@
 
 DSP dsp;
 
-DSP::DSP() : filterOption(FilterOption::Normal), prevfilterOption(FilterOption::BPF)
+DSP::DSP() : filterOption(FilterOption::Normal), prevfilterOption(FilterOption::BPF), filterType(3)
 {
     precomputeTwiddleFactors(FFT_LENGTH);
 }
@@ -162,4 +162,9 @@ bool DSP::isFilterOptionChange(void)
     }
 
     return false;
+}
+
+void DSP::changeFilterType(char val)
+{
+    filterType = val;
 }

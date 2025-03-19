@@ -143,6 +143,7 @@ extern "C"
     volatile int Uart1_Rx_In = 0;
     volatile char Uart1_Rx_Data;
     extern volatile char queueSignal;
+    extern volatile char targetSignal;
     void USART1_IRQHandler(void)
     {
         scopedItrLock lock;
@@ -151,7 +152,11 @@ extern "C"
         Uart1_Rx_Data = (char)USART1->DR;
         NVIC_ClearPendingIRQ((IRQn_Type)37);
         // Uart_Printf("tp:1 %d\n", Uart1_Rx_Data);
-
+        targetSignal = (char)(Uart1_Rx_Data & 0x0F);
+        dsp.filterType = (char)((Uart1_Rx_Data >> 4) & 0x0F);
+        dsp.filterOption = FilterOption::Normal;
+        // dsp.prevfilterOption = FilterOption::BPF;
+        keyInputFlag = 1;
         // rtos.enQueue(queueSignal, &Uart1_Rx_Data);
         // Uart_Printf("tp:2 %d\n", Uart1_Rx_Data);
     }
