@@ -39,4 +39,4 @@
 #define WAV_HEADER_SIZE 44
 
 #define ARM_MATH
-// #define WITH_SIGNAL
+#define WITH_SIGNAL

@@ -3,7 +3,6 @@
 #include "dsp.h"
 #include "lcd.h"
 
-extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
 
 volatile int uartWaitTaskID;
@@ -120,14 +119,12 @@ void canvasGKTask(void *para)
         enable_interrupts();
     }
 }
-
 void signalTask(void *para)
 {
     char prev = -99;
 #ifndef WITH_SIGNAL
     targetSignal = 1;
 #endif
-
     while (1)
     {
 #ifdef WITH_SIGNAL
@@ -142,27 +139,27 @@ void signalTask(void *para)
             case 1:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = 0.5 * sin(2 * PI * 1906 * i / SAMPLE_RATE) + 0.75 * sin(2 * PI * 1200 * i / SAMPLE_RATE) +
-                              1.2 * cos(2 * PI * 800 * i / SAMPLE_RATE) + 1.5 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
-                              0.8 * cos(2 * PI * 300 * i / SAMPLE_RATE);
+                    pSrc[i] = 0.5 * DEFSINE(2 * PI * 1906 * i / SAMPLE_RATE) + 0.75 * DEFSINE(2 * PI * 1200 * i / SAMPLE_RATE) +
+                              1.2 * DEFCOS(2 * PI * 800 * i / SAMPLE_RATE) + 1.5 * DEFSINE(2 * PI * 500 * i / SAMPLE_RATE) +
+                              0.8 * DEFCOS(2 * PI * 300 * i / SAMPLE_RATE);
                 }
                 break;
 
             case 2:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = sin(2 * PI * 2100 * i / SAMPLE_RATE) + 0.9 * cos(2 * PI * 1400 * i / SAMPLE_RATE) +
-                              0.7 * sin(2 * PI * 900 * i / SAMPLE_RATE) + 1.3 * cos(2 * PI * 600 * i / SAMPLE_RATE) +
-                              1.1 * sin(2 * PI * 400 * i / SAMPLE_RATE);
+                    pSrc[i] = DEFSINE(2 * PI * 2100 * i / SAMPLE_RATE) + 0.9 * DEFCOS(2 * PI * 1400 * i / SAMPLE_RATE) +
+                              0.7 * DEFSINE(2 * PI * 900 * i / SAMPLE_RATE) + 1.3 * DEFCOS(2 * PI * 600 * i / SAMPLE_RATE) +
+                              1.1 * DEFSINE(2 * PI * 400 * i / SAMPLE_RATE);
                 }
                 break;
 
             case 3:
                 for (size_t i = 0; i < FFT_LENGTH; ++i)
                 {
-                    pSrc[i] = cos(2 * PI * 1600 * i / SAMPLE_RATE) + 1.2 * sin(2 * PI * 1300 * i / SAMPLE_RATE) +
-                              0.6 * cos(2 * PI * 700 * i / SAMPLE_RATE) + 1.4 * sin(2 * PI * 500 * i / SAMPLE_RATE) +
-                              0.9 * cos(2 * PI * 200 * i / SAMPLE_RATE);
+                    pSrc[i] = DEFCOS(2 * PI * 1600 * i / SAMPLE_RATE) + 1.2 * DEFSINE(2 * PI * 1300 * i / SAMPLE_RATE) +
+                              0.6 * DEFCOS(2 * PI * 700 * i / SAMPLE_RATE) + 1.4 * DEFSINE(2 * PI * 500 * i / SAMPLE_RATE) +
+                              0.9 * DEFCOS(2 * PI * 200 * i / SAMPLE_RATE);
                 }
                 break;
 
@@ -179,7 +176,7 @@ void signalTask(void *para)
             ;
         }
 #endif
-        rtos.delay(500);
+        rtos.delay(10);
     }
 }
 
@@ -257,21 +254,21 @@ void draw_line(short *fftData, short maxMagnitude)
 void dspTask(void *para)
 {
     short maxMagnitude;
-
     rtos.delay(10);
 
 #ifndef WITH_SIGNAL
     dsp.filterType = FIR;
+    dsp.changeFilterOption();
 #endif
-
     while (1)
     {
+        rtos.delay(100);
         disable_interrupts();
         if (dsp.isFilterOptionChange())
         {
             rtos.lockMutex(signalMemoryMutexID);
+            // Uart_Printf("tp1: %d\n", targetSignal);
             makeSomeNoise();
-
             switch (dsp.filterOption)
             {
             case FilterOption::Normal:
@@ -341,7 +338,6 @@ void dspTask(void *para)
 #endif
                 if (magnitude[i] > maxMagnitude)
                     maxMagnitude = magnitude[i];
-
                 // Uart_Printf("%d: %d_%d\n", i, freqs[i], magnitude[i]);
             }
             draw_line(magnitude, maxMagnitude);
