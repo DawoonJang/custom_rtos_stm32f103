@@ -30,6 +30,7 @@
 
 enum class FilterOption
 {
+    None,
     Normal,
     LPF,
     HPF,
@@ -66,8 +67,8 @@ class DSP
                     const float *const b_coefficients, const float *const a_coefficients);
 
     void changeFilterOption(void);
-
     bool isFilterOptionChange(void);
+    bool isFilterTypeChange(void);
     void changeFilterType(char val);
 
     const float FIR_LPF_Coefficients_575[FIR_ORDER] = {

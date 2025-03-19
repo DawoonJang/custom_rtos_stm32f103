@@ -554,8 +554,8 @@ static unsigned char _SPI1_Read_Byte(void)
     {
 
         Lcd_Draw_Box(0, 0, FONT_POS, FONT_POS, BLACK);
-        Lcd_Draw_Char(FONT_POS / 2, FONT_POS / 2, band_char[(unsigned char)filterOptions],
-                      font_set[(unsigned char)filterOptions]);
+        Lcd_Draw_Char(FONT_POS / 2, FONT_POS / 2, band_char[((unsigned char)filterOptions)-1],
+                      font_set[((unsigned char)filterOptions)-1]);
     }
 
     void Lcd_Draw_Logo(int xs, int ys, int w, int h)
