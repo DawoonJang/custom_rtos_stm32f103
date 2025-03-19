@@ -1,18 +1,7 @@
 #include "sqe.h"
 #include "device_driver.h"
+#include "dsp.h"
 #include "lcd.h"
-
-#ifdef ARM_MATH
-#include "arm_math.h"
-#define DEFSINE arm_sin_f32
-#define DEFSQRT arm_sqrt_q15
-
-#else
-#include <math.h>
-#define DEFSINE sin
-#define DEFSQRT sqrt
-
-#endif
 
 extern volatile int Uart1_Rx_In;
 extern volatile bool keyInputFlag;
@@ -114,52 +103,51 @@ extern volatile char Uart1_Rx_Data;
 void signalTask(void *para)
 {
     char prev = 99;
-    Uart1_Rx_Data = 1;
     while (1)
     {
-        // if (Uart1_Rx_Data != prev)
-        // {
-        // Uart_Printf("signalIdx changed:%d->%d\n", prev, Uart1_Rx_Data);
-        rtos.lockMutex(signalMemoryMutexID);
-        disable_interrupts();
-        switch (Uart1_Rx_Data)
+        if (Uart1_Rx_Data != prev)
         {
-        case 1:
-            for (size_t i = 0; i < FFT_LENGTH; ++i)
+            // Uart_Printf("signalIdx changed:%d->%d\n", prev, Uart1_Rx_Data);
+            rtos.lockMutex(signalMemoryMutexID);
+            disable_interrupts();
+            switch (Uart1_Rx_Data)
             {
-                pSrc[i] = 0.5 * DEFSINE((2 * PI * 1906 * i) / SAMPLE_RATE) +
-                          0.75 * DEFSINE((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
-                          2 * DEFSINE((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
-                          1.5 * DEFSINE((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
-                          DEFSINE((2 * PI * 1500 * i) / SAMPLE_RATE);
-            }
-            break;
+            case 1:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 0.5 * DEFSINE((2 * PI * 1906 * i) / SAMPLE_RATE) +
+                              0.75 * DEFSINE((2 * PI * (SIGNAL_FREQ / 2) * i) / SAMPLE_RATE) +
+                              2 * DEFSINE((2 * PI * (SIGNAL_FREQ / 8) * i) / SAMPLE_RATE) +
+                              1.5 * DEFSINE((2 * PI * (SIGNAL_FREQ / 4) * i) / SAMPLE_RATE) +
+                              DEFSINE((2 * PI * 1500 * i) / SAMPLE_RATE);
+                }
+                break;
 
-        case 2:
-            for (size_t i = 0; i < FFT_LENGTH; ++i)
-            {
-                pSrc[i] = 1;
-            }
-            break;
+            case 2:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 1;
+                }
+                break;
 
-        case 3:
-            for (size_t i = 0; i < FFT_LENGTH; ++i)
-            {
-                pSrc[i] = 2;
-            }
-            break;
+            case 3:
+                for (size_t i = 0; i < FFT_LENGTH; ++i)
+                {
+                    pSrc[i] = 2;
+                }
+                break;
 
-        default:
-            break;
+            default:
+                break;
+            }
+            prev = Uart1_Rx_Data;
+            enable_interrupts();
+            rtos.unlockMutex(signalMemoryMutexID);
         }
-        prev = Uart1_Rx_Data;
-        enable_interrupts();
-        rtos.unlockMutex(signalMemoryMutexID);
-        // }
-        // else
-        // {
-        //     ;
-        // }
+        else
+        {
+            ;
+        }
         rtos.delay(500);
     }
 }

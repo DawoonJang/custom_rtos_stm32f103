@@ -15,8 +15,8 @@ void DSP::precomputeTwiddleFactors(const unsigned short N)
 
     for (long i = 0; i < N2; ++i)
     {
-        WR[i] = cos(T * i);
-        WI[i] = -sin(T * i);
+        WR[i] = DEFCOS(T * i);
+        WI[i] = -DEFSINE(T * i);
     }
 }
 

@@ -581,8 +581,8 @@ static unsigned char _SPI1_Read_Byte(void)
                 if (index >= 62720)
                     break; // 배열 크기 초과 방지
 
-                unsigned char c0 = LogoArray[index];
-                unsigned char c1 = LogoArray[index + 1];
+                unsigned char c0 = LogoArray[index + 1];
+                unsigned char c1 = LogoArray[index];
                 index += 2;
 
                 _SPI1_Write_Byte(c0);

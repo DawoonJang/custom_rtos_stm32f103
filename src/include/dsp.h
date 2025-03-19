@@ -16,6 +16,18 @@
 #define PI (3.14159265358979f)
 #endif
 
+#ifdef ARM_MATH
+#include "arm_math.h"
+#define DEFSINE arm_sin_f32
+#define DEFCOS arm_cos_f32
+#define DEFSQRT arm_sqrt_q15
+#else
+#include <math.h>
+#define DEFSINE sin
+#define DEFCOS cos
+#define DEFSQRT sqrt
+#endif
+
 enum class FilterOption
 {
     Normal,
