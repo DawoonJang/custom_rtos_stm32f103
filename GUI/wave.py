@@ -64,29 +64,29 @@ class UartHandler:
                 if recvData:
                     if recvData == "S":
                         filterType = int(self.device.readline().decode().strip())
-                        print(filterType)
+                        # print(filterType)
                         self.recording = True
                         self.data_buffer = []
                         cnt = 0
-                        print("[STX] Start of transmission detected")
+                        # print("[INFO] Start of transmission detected")
                     elif recvData == "E" and self.recording:
                         self.recording = False
                         self.plot_callback(self.data_buffer, filterType)
-                        print("[ETX] End of transmission detected")
+                        # print("[INFO] End of transmission detected")
                         if len(self.data_buffer) == 128:
-                            self.log_callback(f"[INFO] Filtered Data Receive Complete")
+                            self.log_callback(f"[INFO] Filtered Data Receive Complete,", filter = filterType)
                     else:
                         cnt += 1
                         try:
                             self.data_buffer.append(Decimal(recvData))
                         except:
-                            print(f"[ERROR] Invalid number received: {recvData}")
+                            self.log_callback(f"[ERROR] Invalid number received: {recvData}")
 
     def start_sending(self, selectedSignal, filterType):
         if self.device:
             data_byte = ((filterType & 0x0F) << 4) | (selectedSignal & 0x0F)
             self.device.write(int(data_byte).to_bytes())
-            self.log_callback(f"[TX] Sent: {bin(data_byte)}")
+            # self.log_callback(f"[TX] Sent: {bin(data_byte)}")
             time.sleep(0.1)
             
     def stop_receiving(self):
@@ -148,9 +148,20 @@ class SineWaveGUI:
         self.ax_received.set_ylabel("Amplitude")
         self.ax_received.set_title("Filtered Result")
 
-    def log_message(self, message):
+    def log_message(self, message, filter = 0):
         self.log_text.config(state=tk.NORMAL)
-        self.log_text.insert(tk.END, message + "\n")
+
+        if filter == 0:
+            self.log_text.insert(tk.END, message + "\n")
+        else:
+            if filter == 1:
+                filterTypeStr = "LPF"
+            elif filter == 2:
+                filterTypeStr = "HPF"
+            elif filter == 3:
+                filterTypeStr = "BPF"
+            self.log_text.insert(tk.END, message +f" Filter: {filterTypeStr}" "\n")
+            
         self.log_text.yview(tk.END)
         self.log_text.config(state=tk.DISABLED)
 
